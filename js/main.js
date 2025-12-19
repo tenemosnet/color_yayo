@@ -257,10 +257,10 @@ function handleClearStorage() {
  */
 function handleCustomerMatching() {
     showStatus('顧客照合中...', 'info');
-    
+
     const result = performCustomerMatching(colormeOrders, yayoiCustomers);
     newCustomersList = result.newCustomersList;
-    
+
     // サマリー表示
     displaySummary({
         totalOrders: colormeOrders.length,
@@ -269,16 +269,16 @@ function handleCustomerMatching() {
         maxCode: result.maxCode,
         nextCode: result.nextCode
     });
-    
+
     // 新規顧客リスト表示
     displayNewCustomers(newCustomersList);
-    
+
     // 受注データリスト表示
     displayedOrders = displayOrders(colormeOrders);
-    
+
     // 全選択チェックボックスのイベント
     document.getElementById('selectAllOrders')?.addEventListener('change', handleSelectAll);
-    
+
     // 各チェックボックスのイベント
     colormeOrders.forEach((order, index) => {
         const checkbox = document.getElementById(`orderCheck_${index}`);
@@ -286,7 +286,7 @@ function handleCustomerMatching() {
             checkbox.addEventListener('change', () => handleOrderCheckChange(index));
         }
     });
-    
+
     // 新規顧客チェックボックスのイベント
     newCustomersList.forEach((customer, index) => {
         const checkbox = document.getElementById(`newCustomerCheck_${index}`);
@@ -294,7 +294,13 @@ function handleCustomerMatching() {
             checkbox.addEventListener('change', () => handleNewCustomerCheckChange(index));
         }
     });
-    
+
+    // 新規顧客が0件の場合は、変換セクションをすぐに表示
+    if (newCustomersList.length === 0) {
+        document.getElementById('convertSection').style.display = 'block';
+        document.getElementById('convertBtn').style.display = 'block';
+    }
+
     showStatus('✅ 顧客照合が完了しました', 'success');
 }
 
@@ -406,8 +412,9 @@ function handleRegistrationComplete() {
         showStatus('⚠️ すべての新規顧客にチェックを入れてください', 'error');
         return;
     }
-    
-    // 変換セクションを表示
+
+    // 変換セクション全体を表示
+    document.getElementById('convertSection').style.display = 'block';
     document.getElementById('convertBtn').style.display = 'block';
     showStatus('✅ 新規顧客の登録完了を確認しました。変換処理を続けてください。', 'success');
 }
@@ -448,20 +455,26 @@ function handleConvert() {
         const checkbox = document.getElementById(`orderCheck_${index}`);
         return checkbox && checkbox.checked;
     });
-    
+
     if (selectedOrders.length === 0) {
         showStatus('⚠️ 変換する受注を選択してください', 'error');
         return;
     }
-    
+
+    // 伝票番号の未入力チェック
+    const denpyoNoStart = document.getElementById('denpyoNoStart')?.value.trim();
+    if (!denpyoNoStart) {
+        showStatus('⚠️ 伝票番号（開始番号）を入力してください', 'error');
+        return;
+    }
+
     try {
-        const denpyoNoStart = document.getElementById('denpyoNoStart')?.value || '1';
-        const tantoshaCode = document.getElementById('tantoshaCode')?.value || '14';
-        
+        const tantoshaCode = '11'; // 固定値
+
         const txtContent = convertToYayoi(selectedOrders, { denpyoNoStart, tantoshaCode });
         const filename = `ya_sales_${getDateString()}.txt`;
         downloadAsShiftJIS(txtContent, filename);
-        
+
         showStatus(`✅ 売上伝票TXTファイルを出力しました（${selectedOrders.length}件）`, 'success');
     } catch (error) {
         showStatus(`❌ 変換エラー: ${error.message}`, 'error');

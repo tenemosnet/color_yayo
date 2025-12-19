@@ -1,0 +1,17 @@
+{
+  "name": "colorme-yayoi-converter",
+  "version": "3.2.0",
+  "description": "カラーミーショップ→弥生販売 変換ツール VSCode版",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server -p 8000 -o",
+    "dev": "npx http-server -p 8000 -o"
+  },
+  "keywords": [
+    "colorme",
+    "yayoi",
+    "converter"
+  ],
+  "author": "",
+  "license": "ISC"
+}

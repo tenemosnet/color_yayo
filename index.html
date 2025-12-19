@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カラーミーショップ→弥生販売 変換ツール ver 3.2</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛍️ カラーミーショップ→弥生販売 変換ツール <span class="version">ver 3.2 - VSCode版</span></h1>
+            <p>カラーミーショップの受注データと弥生販売の顧客台帳を照合して、売上伝票を自動作成</p>
+        </div>
+        
+        <div class="content">
+            <!-- ステータスメッセージ -->
+            <div id="status" style="display: none;"></div>
+            
+            <!-- ファイル読み込みセクション -->
+            <div class="upload-section">
+                <h2>ファイル読み込み</h2>
+                
+                <div class="file-upload-group">
+                    <!-- カラーミーCSV -->
+                    <div class="file-upload-box" id="colormeUploadBox">
+                        <div class="upload-icon">🛒</div>
+                        <h3>カラーミーショップCSV</h3>
+                        <p>ドラッグ&ドロップ または クリックして選択</p>
+                        <input type="file" id="colormeInput" accept=".csv" />
+                        <label for="colormeInput" class="file-input-label">📂 ファイルを選択</label>
+                        <div class="file-name" id="colormeName"></div>
+                        
+                        <!-- ヘルプボタン -->
+                        <div style="margin-top: 15px; text-align: center;">
+                            <button class="help-btn" id="colormeHelpBtn">
+                                ❓ ファイルの準備方法（カラーミー）
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 弥生販売CSV -->
+                    <div class="file-upload-box" id="yayoiUploadBox">
+                        <div class="upload-icon">👥</div>
+                        <h3>弥生販売 顧客台帳CSV</h3>
+                        <p>ドラッグ&ドロップ または クリックして選択</p>
+                        
+                        <!-- LocalStorage保存データ表示 -->
+                        <div id="storedDataInfo" style="display: none;">
+                            <div style="font-weight: 600; color: #2e7d32;">💾 保存されているデータ</div>
+                            <div>顧客数: <span id="storedCustomerCount">-</span>件</div>
+                            <div>最終更新: <span id="storedLastUpdate">-</span></div>
+                            <div>バージョン: <span id="storedVersion">-</span></div>
+                            <button id="useStoredDataBtn">💾 保存データを使用</button>
+                        </div>
+                        
+                        <input type="file" id="yayoiInput" accept=".csv" />
+                        <label for="yayoiInput" class="file-input-label">📂 新しいファイルで更新</label>
+                        <div class="file-name" id="yayoiName"></div>
+                        
+                        <!-- 詳細設定（折りたたみ式） -->
+                        <div style="margin-top: 15px;">
+                            <button id="advancedSettingsToggle">
+                                <span>⚙️ 詳細設定（PC間データ移動）</span>
+                                <span id="advancedSettingsIcon">▼</span>
+                            </button>
+                            
+                            <div id="advancedSettingsContent" style="display: none;">
+                                <div>
+                                    <strong>💡 PC間データ移動とは？</strong><br>
+                                    自宅と職場など、別のPCで作業を続ける場合に使用します。<br>
+                                    通常は使用しません。
+                                </div>
+                                
+                                <div>
+                                    <button id="exportStorageBtn">📤 JSONファイルに出力</button>
+                                    <button id="importStorageBtn">📥 JSONファイルから読み込み</button>
+                                    <button id="clearStorageBtn">🗑️ ブラウザデータをクリア</button>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="file" id="importStorageFileInput" accept=".json" style="display: none;" />
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="matchBtn" class="file-input-label" disabled>
+                        🔍 顧客照合を開始
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 照合結果サマリー -->
+            <div class="summary-section" id="summarySection" style="display: none;">
+                <h2>照合結果サマリー</h2>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-label">総受注数</div>
+                        <div class="summary-value" id="totalOrders">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">既存顧客</div>
+                        <div class="summary-value" id="existingCustomers">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">新規顧客</div>
+                        <div class="summary-value" id="newCustomers">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">最大顧客番号</div>
+                        <div class="summary-value" id="maxCustomerCode">000000</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">採番開始番号</div>
+                        <div class="summary-value" id="nextCustomerCode">000001</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 新規顧客リスト -->
+            <div class="new-customers-section" id="newCustomersSection" style="display: none;">
+                <h2>新規顧客リスト</h2>
+                <div id="newCustomersList"></div>
+                
+                <div class="button-group">
+                    <button id="exportNewCustomersBtn" class="action-btn">
+                        📥 新規顧客をTXT出力（弥生販売インポート用）
+                    </button>
+                    <button id="registrationCompleteBtn" class="action-btn">
+                        新規顧客の登録が完了したらチェック
+                    </button>
+                    <button id="updateCustomerListBtn" class="action-btn">
+                        登録済み顧客を顧客台帳に追加してCSV出力
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 受注データリスト -->
+            <div class="orders-section" id="ordersSection" style="display: none;">
+                <h2>受注データ</h2>
+                <div id="ordersList"></div>
+            </div>
+            
+            <!-- 変換セクション -->
+            <div class="convert-section" style="display: none;" id="convertSection">
+                <h2>売上伝票変換</h2>
+
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label for="denpyoNoStart">伝票番号（開始番号）</label>
+                        <input type="text" id="denpyoNoStart" value="" placeholder="「弥生販売」の売上伝票新規番号を確認、入力" />
+                    </div>
+                </div>
+
+                <button id="convertBtn" class="convert-btn" style="display: none;">
+                    🚀 変換して弥生販売TXTをダウンロード
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ヘルプモーダル -->
+    <div id="helpModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" id="helpModalClose">&times;</span>
+            <h2>📖 カラーミーショップCSVファイルの準備方法</h2>
+            <p>カラーミーショップの管理画面から受注データCSVをダウンロードします。</p>
+            <!-- ヘルプ内容は省略 -->
+        </div>
+    </div>
+    
+    <!-- encoding.js (Shift-JIS変換用) -->
+    <script src="https://cdn.jsdelivr.net/npm/encoding-japanese@2.0.0/encoding.min.js"></script>
+    
+    <!-- アプリケーションJavaScript -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -687,3 +687,22 @@
             background: #eeeeee !important;
             border-color: #bbb !important;
         }
+
+        /* プレースホルダーのスタイル */
+        input::placeholder {
+            color: #999;
+            opacity: 1;
+        }
+
+        input::-webkit-input-placeholder {
+            color: #999;
+        }
+
+        input::-moz-placeholder {
+            color: #999;
+            opacity: 1;
+        }
+
+        input:-ms-input-placeholder {
+            color: #999;
+        }
