@@ -3,3 +3,7 @@ node_modules/
 *.log
 .vscode/
 .idea/
+
+# Screenshots and sample data
+*.png
+*.csv

@@ -6,15 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 カラーミーショップ（Color Me Shop）の受注データを弥生販売（Yayoi Sales）の売上伝票形式に変換するWebアプリケーション。月末の経理作業を効率化します。
 
-## Commands
+Browser-based ES6 Modules application. No build step required.
 
-### Development Server
+## Commands
 
 ```bash
 # Start development server (opens browser automatically)
 npm start
-# or
-npm run dev
 
 # Alternative methods
 npx http-server -p 8000 -o
@@ -65,21 +63,31 @@ ES6 Modules with clear separation of concerns:
 
 ### Data Flow
 
-```
-1. File Upload (カラーミーCSV + 弥生販売CSV)
-2. CSV Parsing (parser.js)
-3. Customer Matching (matcher.js) → Identifies existing vs new customers
-4. New Customer Export (if needed) → TXT file for Yayoi import
-5. Order Conversion (converter.js) → Sales slip TXT generation
-6. Download (Shift-JIS, tab-delimited, CRLF)
-```
+**Two-step workflow** (required because new customers must be imported into Yayoi before generating sales slips):
+
+**Step 1: Customer Matching & Registration**
+1. Upload Color Me CSV (Shift-JIS) + Yayoi customer master CSV (UTF-8 BOM)
+2. Parse files → extract orders and customer data
+3. Match customers by priority: email → phone (hyphen-normalized) → full name
+4. Generate new customer codes starting from `max(existing codes) + 1`
+5. Export new customers as TXT (Shift-JIS, tab-delimited, 48 fields)
+6. **User imports new customers into Yayoi Sales** → marks as registered in UI
+
+**Step 2: Sales Slip Generation**
+1. User selects orders to convert (checkboxes)
+2. Decompose set products into components (config.js)
+3. Add shipping fees (prefecture-based codes), COD fees (tiered calculation), coupon discounts
+4. Generate sales slips as TXT (Shift-JIS, tab-delimited, CRLF, 59 fields)
+5. Download for Yayoi import
+
+**State Management**: Global variables in main.js (`colormeOrders`, `yayoiCustomers`, `newCustomersList`) track workflow state. Customer master data persists in LocalStorage between sessions.
 
 ### Key Data Transformations
 
-**Set Products**: Certain product codes (e.g., '1229', '1378') are decomposed into component products defined in `config.js`. The converter automatically expands these during conversion.
+**Set Products**: Product codes defined in `setProducts` (config.js) are automatically decomposed into component items during conversion. Example: '1229' → ['1221', '1224'].
 
 **Payment Method Logic**:
-- 代引き (Cash on Delivery) → nounyuCode = '001', adds COD fee row
+- 代引き (Cash on Delivery) → nounyuCode = '001', adds COD fee row calculated via `calculateCODFee()`
 - その他 → nounyuCode = '003'
 
 **Output Format**: 59-field tab-delimited format matching Yayoi Sales import specification. Field 40 is fixed to 'テネモスショップ'.
@@ -137,31 +145,16 @@ export const YAYOI_FORMAT = {
 };
 ```
 
-## Development Notes
-
-### File Encoding
+## File Encoding Handling
 
 - **Input**: Color Me CSV (Shift-JIS), Yayoi CSV (UTF-8 BOM)
 - **Output**: All TXT files (Shift-JIS, tab-delimited, CRLF)
-- **External dependency**: encoding.js (loaded via CDN in index.html)
+- **External dependency**: encoding.js (CDN loaded in index.html) - handles Shift-JIS conversion via `downloadAsShiftJIS()` in converter.js
 
-### Debugging
-
-- Use browser DevTools (F12) → Console
-- Hard refresh (Ctrl+Shift+R) after modifying config.js
-- ES6 Modules reload automatically on change
-
-### Common Issues
+## Common Issues
 
 **"Failed to load module script" error**: Application opened via `file://` protocol. Must use local server.
 
-**Customer matching fails**: Check that Yayoi customer master CSV has email addresses registered. Matching prioritizes email, then phone, then name.
+**Customer matching fails**: Yayoi customer master CSV must have email addresses registered. Matching prioritizes email → phone → name.
 
-**Text file appears garbled**: Expected behavior when opening in text editor. Import into Yayoi Sales for proper Shift-JIS display.
-
-## Browser Support
-
-- Chrome/Edge (recommended)
-- Firefox
-- Safari
-- ❌ Internet Explorer not supported (requires ES6 Modules)
+**Output file appears garbled in text editor**: Expected behavior. Import into Yayoi Sales for proper Shift-JIS display.
