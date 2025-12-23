@@ -1,6 +1,6 @@
 /**
  * parser.js - CSV解析モジュール
- * ver 3.2 - UI改善版
+ * ver 3.3 - 備考欄改行対応版
  */
 
 import { saveToLocalStorage } from './storage.js';

@@ -1,7 +1,7 @@
 {
   "name": "colorme-yayoi-converter",
-  "version": "3.2.0",
-  "description": "カラーミーショップ→弥生販売 変換ツール VSCode版",
+  "version": "3.3.0",
+  "description": "カラーミーショップ→弥生販売 変換ツール",
   "main": "index.html",
   "scripts": {
     "start": "npx http-server -p 8000 -o",

@@ -1,10 +1,10 @@
 /**
  * config.js - アプリケーション設定
- * ver 3.2 - UI改善版
+ * ver 3.3 - 備考欄改行対応版
  */
 
 // アプリケーション設定
-export const APP_VERSION = "3.2";
+export const APP_VERSION = "3.3";
 export const STORAGE_KEY = "yayoiCustomersData";
 
 // セット商品定義
