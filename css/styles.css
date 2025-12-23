@@ -392,27 +392,39 @@
             font-size: 13px;
             color: #212529;
         }
-        
+
         .orders-table td:last-child {
             border-right: none;
         }
-        
-        .orders-table tbody tr:hover {
-            background: #f8f9ff;
+
+        .orders-table tbody tr {
+            background: #e8f5e9;
         }
-        
+
+        .orders-table tbody tr:hover {
+            background: #c8e6c9;
+        }
+
         .order-id-cell {
             color: #FF6B9D;
             font-weight: 600;
             text-decoration: underline;
         }
-        
-        .existing-customer-row {
-            background: #f0fff4 !important;
+
+        .existing-customer {
+            background: #e8f5e9 !important;
         }
-        
-        .new-customer-row {
-            background: #fffbf0 !important;
+
+        .existing-customer:hover {
+            background: #c8e6c9 !important;
+        }
+
+        .new-customer {
+            background: #ffe8e8 !important;
+        }
+
+        .new-customer:hover {
+            background: #ffd4d4 !important;
         }
         
         .customer-status-existing {

@@ -1,6 +1,6 @@
 /**
  * ui.js - UI操作とイベントハンドラ
- * ver 3.2 - UI改善版
+ * ver 3.3 - 受注データプレビューUI改善版
  */
 
 /**
@@ -136,8 +136,6 @@ export function displayOrders(orders) {
     html += '<th style="width: 100px;">売上ID</th>';
     html += '<th style="width: 100px;">受注日</th>';
     html += '<th style="width: 120px;">名前</th>';
-    html += '<th style="width: 180px;">メールアドレス</th>';
-    html += '<th style="width: 110px;">電話番号</th>';
     html += '<th style="width: 60px;">商品<br>点数</th>';
     html += '<th style="width: 90px;">売上合計</th>';
     html += '<th style="width: 90px;">決済方法</th>';
@@ -166,16 +164,14 @@ export function displayOrders(orders) {
             <td class="checkbox-cell">
                 <input type="checkbox" id="orderCheck_${originalIndex}" data-index="${originalIndex}" ${defaultChecked} />
             </td>
-            <td class="sales-id-cell">${order.salesId}</td>
+            <td class="sales-id-cell" style="font-weight: bold;">${order.salesId}</td>
             <td>${order.orderDate}</td>
-            <td class="customer-name-cell">${order.customerName}</td>
-            <td style="font-size: 11px;">${order.email || '-'}</td>
-            <td>${order.phone || order.mobile || '-'}</td>
+            <td class="customer-name-cell" style="font-weight: bold;">${order.customerName}</td>
             <td style="text-align: center;">${itemCount}</td>
-            <td class="amount-cell">¥${total.toLocaleString()}</td>
-            <td style="${paymentColor}">${paymentDisplay}</td>
+            <td class="amount-cell" style="font-weight: bold;">¥${total.toLocaleString()}</td>
+            <td style="${paymentColor} font-weight: bold;">${paymentDisplay}</td>
             <td>${statusBadge}</td>
-            <td class="customer-code-cell">${order.tokuisakiCode}</td>
+            <td class="customer-code-cell" style="font-weight: bold; color: #d32f2f;">${order.tokuisakiCode}</td>
         </tr>`;
     });
     
