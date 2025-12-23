@@ -376,7 +376,7 @@ function createNewCustomersTXT(customers) {
         const row = [
             customer.assignedCode,          // 0: コード
             customer.customerName,           // 1: 名称
-            '',                             // 2: フリガナ（TODO: カラーミーデータから取得）
+            customer.furigana || '',        // 2: フリガナ（配送先 フリガナ）
             customer.customerName,           // 3: 略称
             (customer.zip || '').replace(/-/g, ''), // 4: 郵便番号（7桁）
             `${customer.prefecture || ''}${customer.address || ''}`, // 5: 住所１

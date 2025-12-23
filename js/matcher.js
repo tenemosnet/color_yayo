@@ -85,6 +85,7 @@ export function createNewCustomersList(colormeOrders, startCode) {
                 newCustomers.push({
                     assignedCode: String(currentCode).padStart(6, '0'),
                     customerName: order.customerName,
+                    furigana: order.furigana,
                     zip: order.zip,
                     prefecture: order.prefecture,
                     address: order.address,
