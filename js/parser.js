@@ -6,16 +6,54 @@
 import { saveToLocalStorage } from './storage.js';
 
 /**
+ * CSVテキストを行に分割（ダブルクォート内の改行を考慮）
+ */
+function splitCSVLines(csvText) {
+    const lines = [];
+    let currentLine = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < csvText.length; i++) {
+        const char = csvText[i];
+        const nextChar = csvText[i + 1];
+
+        if (char === '"') {
+            inQuotes = !inQuotes;
+            currentLine += char;
+        } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+            // ダブルクォート外の改行のみで行を分割
+            if (currentLine.trim()) {
+                lines.push(currentLine);
+            }
+            currentLine = '';
+            // \r\nの場合は\nをスキップ
+            if (char === '\r' && nextChar === '\n') {
+                i++;
+            }
+        } else {
+            currentLine += char;
+        }
+    }
+
+    // 最後の行を追加
+    if (currentLine.trim()) {
+        lines.push(currentLine);
+    }
+
+    return lines;
+}
+
+/**
  * CSVの1行をパース（ダブルクォートで囲まれたカンマを考慮）
  */
 export function parseCSVLine(line) {
     const result = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        
+
         if (char === '"') {
             inQuotes = !inQuotes;
         } else if (char === ',' && !inQuotes) {
@@ -26,7 +64,7 @@ export function parseCSVLine(line) {
         }
     }
     result.push(current);
-    
+
     return result;
 }
 
@@ -34,7 +72,7 @@ export function parseCSVLine(line) {
  * カラーミーショップCSVをパース
  */
 export function parseColorMeCSV(csvText) {
-    const lines = csvText.split(/\r?\n/).filter(line => line.trim());
+    const lines = splitCSVLines(csvText);
     if (lines.length < 2) {
         throw new Error('CSVファイルが空です');
     }
@@ -143,7 +181,7 @@ export function parseColorMeCSV(csvText) {
  * 弥生販売 顧客台帳CSVをパース
  */
 export function parseYayoiCSV(csvText) {
-    const lines = csvText.split(/\r?\n/);
+    const lines = splitCSVLines(csvText);
     if (lines.length < 5) {
         throw new Error('顧客台帳CSVが空です');
     }
