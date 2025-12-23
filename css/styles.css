@@ -420,11 +420,11 @@
         }
 
         .new-customer {
-            background: #ffe8e8 !important;
+            background: #fff3cd !important;
         }
 
         .new-customer:hover {
-            background: #ffd4d4 !important;
+            background: #ffe8a1 !important;
         }
         
         .customer-status-existing {
