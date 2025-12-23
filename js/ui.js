@@ -180,8 +180,9 @@ export function displayOrders(orders) {
     list.innerHTML = html;
     section.style.display = 'block';
 
-    // 売上伝票設定セクションを表示
+    // 売上伝票設定セクションと変換ボタンを表示
     document.getElementById('convertSection').style.display = 'block';
+    document.getElementById('convertBtn').style.display = 'block';
 
     return sortedOrders;
 }
