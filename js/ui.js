@@ -143,7 +143,7 @@ export function displayOrders(orders) {
     html += '<th style="width: 80px;">得意先<br>コード</th>';
     html += '</tr></thead><tbody>';
     
-    sortedOrders.forEach((order, displayIndex) => {
+    sortedOrders.forEach((order) => {
         const originalIndex = order.originalIndex;
         const itemCount = order.items.length;
         const total = order.items.reduce((sum, item) => sum + item.subtotal, 0) + order.shippingFee - order.discountAmount;
@@ -179,7 +179,10 @@ export function displayOrders(orders) {
     
     list.innerHTML = html;
     section.style.display = 'block';
-    
+
+    // 売上伝票設定セクションを表示
+    document.getElementById('convertSection').style.display = 'block';
+
     return sortedOrders;
 }
 
