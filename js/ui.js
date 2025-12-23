@@ -146,7 +146,7 @@ export function displayOrders(orders) {
     sortedOrders.forEach((order, displayIndex) => {
         const originalIndex = order.originalIndex;
         const itemCount = order.items.length;
-        const total = order.items.reduce((sum, item) => sum + item.subtotal, 0) + order.shippingFee;
+        const total = order.items.reduce((sum, item) => sum + item.subtotal, 0) + order.shippingFee - order.discountAmount;
         
         const statusBadge = order.matchedCustomer ? 
             '<span class="status-badge existing">✅ 既存</span>' :
