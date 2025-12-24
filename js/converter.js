@@ -3,7 +3,7 @@
  * ver 3.2 - UI改善版
  */
 
-import { setProducts, shippingCodes, calculateCODFee, YAYOI_FORMAT } from './config.js';
+import { setProducts, productNameMap, shippingCodes, calculateCODFee, YAYOI_FORMAT } from './config.js';
 
 /**
  * 商品がセット商品かチェック
@@ -85,7 +85,7 @@ export function convertToYayoi(orders, settings) {
                     tantoshaCode,
                     rowCode: rowCode++,
                     productCode: item.productCode,
-                    productName: item.productName,
+                    productName: productNameMap[item.productCode] || item.productName,
                     quantity: item.quantity,
                     unitPrice: item.unitPrice,
                     amount: item.subtotal,

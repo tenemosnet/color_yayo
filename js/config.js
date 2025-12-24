@@ -7,6 +7,13 @@
 export const APP_VERSION = "3.3";
 export const STORAGE_KEY = "yayoiCustomersData";
 
+// 商品名称マッピング（カラーミー→弥生販売）
+export const productNameMap = {
+    '1364': 'Ag・uA(ｱｸﾞｱ)100mlｽﾌﾟﾚｰﾎﾞﾄﾙ',
+    '1365': 'きのこの酵素水100mlｽﾌﾟﾚｰﾎﾞﾄﾙ',
+    '1366': 'お米と大豆の酵素水100mlｽﾌﾟﾚｰﾎﾞﾄﾙ'
+};
+
 // セット商品定義
 export const setProducts = {
     '1229': [
