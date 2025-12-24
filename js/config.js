@@ -11,7 +11,9 @@ export const STORAGE_KEY = "yayoiCustomersData";
 export const productNameMap = {
     '1364': 'Ag・uA(ｱｸﾞｱ)100mlｽﾌﾟﾚｰﾎﾞﾄﾙ',
     '1365': 'きのこの酵素水100mlｽﾌﾟﾚｰﾎﾞﾄﾙ',
-    '1366': 'お米と大豆の酵素水100mlｽﾌﾟﾚｰﾎﾞﾄﾙ'
+    '1366': 'お米と大豆の酵素水100mlｽﾌﾟﾚｰﾎﾞﾄﾙ',
+    '1369': 'Ag・uAアグア650mlパック(酵素水)',
+    '1396': '遮光スプレー200ml(トリガーヘッド) 空容器'
 };
 
 // セット商品定義
@@ -21,12 +23,12 @@ export const setProducts = {
         { code: '1224', name: '泡ポンプ400ml空容器', price: 800 }
     ],
     '1378': [
-        { code: '1369', name: 'アグア650mlパック', price: 2530 },
-        { code: '1396', name: '遮光スプレー200ml', price: 800 }
+        { code: '1369', name: 'Ag・uAアグア650mlパック(酵素水)', price: 2530 },
+        { code: '1396', name: '遮光スプレー200ml(トリガーヘッド) 空容器', price: 800 }
     ],
     '1379': [
         { code: '1393', name: 'お米と大豆の酵素水650mlパック', price: 2530 },
-        { code: '1396', name: '遮光スプレー200ml', price: 800 }
+        { code: '1396', name: '遮光スプレー200ml(トリガーヘッド) 空容器', price: 800 }
     ],
     '1227': [
         { code: '1226', name: 'ビダウォーターソープ200ml', price: 1980 },
