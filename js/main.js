@@ -410,14 +410,25 @@ function createNewCustomersTXT(customers) {
     const lines = [];
 
     customers.forEach(customer => {
+        // 住所分割ロジック: 数字（半角・全角）の後のスペース（半角・全角）で分割
+        const fullAddress = `${customer.prefecture || ''}${customer.address || ''}`;
+        let address1 = fullAddress;
+        let address2 = '';
+
+        const addressMatch = fullAddress.match(/^(.+[0-9０-９])[\s　]+(.+)$/);
+        if (addressMatch) {
+            address1 = addressMatch[1];  // 数字までの部分
+            address2 = addressMatch[2];  // スペース以降の部分
+        }
+
         const row = [
             customer.assignedCode,          // 0: コード
             customer.customerName,           // 1: 名称
             toHalfWidthKatakana(customer.furigana || ''), // 2: フリガナ（半角カタカナに変換）
             customer.customerName,           // 3: 略称
             (customer.zip || '').replace(/-/g, ''), // 4: 郵便番号（7桁）
-            `${customer.prefecture || ''}${customer.address || ''}`, // 5: 住所１
-            '',                             // 6: 住所２
+            address1,                       // 5: 住所１（数字まで）
+            address2,                       // 6: 住所２（建物名等）
             '',                             // 7: 部署名
             '',                             // 8: 役職名
             '',                             // 9: 担当者
