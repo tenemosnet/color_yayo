@@ -10,21 +10,21 @@ export const STORAGE_KEY = "yayoiCustomersData";
 // セット商品定義
 export const setProducts = {
     '1229': [
-        { code: '1221', name: 'ビダウォーターソープ詰替用', price: 2420 },
+        { code: '1221', name: 'ビダウォーターソープ詰替用(400ml)', price: 2420 },
         { code: '1224', name: '泡ポンプ400ml空容器', price: 800 }
     ],
     '1378': [
-        { code: '1369', name: 'アグアアルカリ650ml詰替用', price: 2530 },
-        { code: '1396', name: 'スプレー800ml空容器', price: 800 }
+        { code: '1369', name: 'アグア650mlパック', price: 2530 },
+        { code: '1396', name: '遮光スプレー200ml', price: 800 }
     ],
     '1379': [
-        { code: '1393', name: '酵素水650ml詰替用', price: 2530 },
-        { code: '1396', name: 'スプレー800ml空容器', price: 800 }
+        { code: '1393', name: 'お米と大豆の酵素水650mlパック', price: 2530 },
+        { code: '1396', name: '遮光スプレー200ml', price: 800 }
     ],
     '1227': [
         { code: '1226', name: 'ビダウォーターソープ200ml', price: 1980 },
-        { code: '1221', name: 'ビダウォーターソープ詰替用', price: 2420 },
-        { code: '1228', name: 'ビダソープ泡200ml+補充用800mlセット割引', price: -100 }
+        { code: '1221', name: 'ビダウォーターソープ詰替用(400ml)', price: 2420 },
+        { code: '1228', name: 'ビダソープセット割引', price: -100 }
     ]
 };
 
