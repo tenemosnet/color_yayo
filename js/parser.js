@@ -199,6 +199,10 @@ export function parseYayoiCSV(csvText) {
     // ヘッダー行を取得（行4）
     const headerRow = parseCSVLine(lines[4]);
 
+    // ヘッダー行の内容をログ出力（CSV/Excel比較用）
+    console.log('=== ヘッダー行検証 ===');
+    console.log('行4（ヘッダー行）:', headerRow.join(' | '));
+
     // カラムのインデックスを動的に検索（空列があるため）
     const indices = {
         customerCode: headerRow.indexOf('コード'),
@@ -208,10 +212,32 @@ export function parseYayoiCSV(csvText) {
         email: headerRow.indexOf('メールアドレス')
     };
 
+    // ヘッダー検証結果をログ出力
+    console.log('検出されたカラムインデックス:');
+    console.log('  - コード:', indices.customerCode);
+    console.log('  - 名称:', indices.name);
+    console.log('  - フリガナ:', indices.furigana);
+    console.log('  - TEL:', indices.phone);
+    console.log('  - メールアドレス:', indices.email);
+
     // 必須項目が見つからない場合はエラー
     if (indices.customerCode === -1 || indices.name === -1) {
         throw new Error('CSVファイルに必要な項目（コード、名称）が見つかりません');
     }
+
+    // 推奨項目の警告
+    const warnings = [];
+    if (indices.furigana === -1) warnings.push('フリガナ');
+    if (indices.phone === -1) warnings.push('TEL');
+    if (indices.email === -1) warnings.push('メールアドレス');
+
+    if (warnings.length > 0) {
+        console.warn(`⚠️ 推奨項目が見つかりません: ${warnings.join(', ')}`);
+        console.warn('顧客照合の精度が低下する可能性があります');
+    } else {
+        console.log('✅ すべての必須・推奨項目が見つかりました');
+    }
+    console.log('=====================');
 
     const customers = [];
 
@@ -250,4 +276,69 @@ export function parseYayoiCSV(csvText) {
     }
 
     return customers;
+}
+
+/**
+ * Excelファイル（.xlsx）をCSVテキストに変換
+ * @param {ArrayBuffer} arrayBuffer - Excelファイルのバイナリデータ
+ * @returns {string} - CSV形式のテキスト（UTF-8）
+ */
+export function convertExcelToCSV(arrayBuffer) {
+    // SheetJSライブラリの存在チェック
+    if (typeof XLSX === 'undefined') {
+        throw new Error('SheetJS (xlsx.js) が読み込まれていません');
+    }
+
+    try {
+        // ArrayBufferからワークブックを読み込み
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+        // 最初のシート名を取得
+        const firstSheetName = workbook.SheetNames[0];
+        if (!firstSheetName) {
+            throw new Error('Excelファイルにシートが見つかりません');
+        }
+
+        console.log('=== Excel → CSV 変換 ===');
+        console.log('シート名:', firstSheetName);
+
+        // シートを取得
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        // シートをCSV形式に変換
+        // オプション:
+        // - FS: フィールド区切り文字（デフォルト: カンマ）
+        // - RS: レコード区切り文字（デフォルト: \n）
+        // - blankrows: 空行も含める（弥生CSVの構造を維持）
+        const csvText = XLSX.utils.sheet_to_csv(worksheet, {
+            FS: ',',           // カンマ区切り
+            RS: '\n',          // 改行区切り
+            blankrows: true    // 空行も含める（弥生CSVの構造を維持）
+        });
+
+        // 変換後のCSV構造を検証（最初の6行を確認）
+        const lines = csvText.split('\n');
+        console.log('変換後のCSV構造（最初の6行）:');
+        for (let i = 0; i < Math.min(6, lines.length); i++) {
+            const preview = lines[i].length > 80 ? lines[i].substring(0, 80) + '...' : lines[i];
+            console.log(`  行${i}: ${preview}`);
+        }
+
+        // 行4がヘッダー行になっているかの簡易チェック
+        if (lines.length > 4) {
+            const headerLine = lines[4];
+            if (headerLine.includes('コード') && headerLine.includes('名称')) {
+                console.log('✅ 行4にヘッダー（コード、名称）が検出されました');
+            } else {
+                console.warn('⚠️ 警告: 行4にヘッダーが見つかりません。Excelの構造を確認してください');
+            }
+        }
+
+        console.log(`総行数: ${lines.length}行`);
+        console.log('========================');
+
+        return csvText;
+    } catch (error) {
+        throw new Error(`Excel変換エラー: ${error.message}`);
+    }
 }

@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カラーミーショップ→弥生販売 変換ツール ver 3.4</title>
+    <title>カラーミーショップ→弥生販売 変換ツール ver 3.5</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🛍️ カラーミーショップ→弥生販売 変換ツール <span class="version">ver 3.4</span></h1>
+            <h1>🛍️ カラーミーショップ→弥生販売 変換ツール <span class="version">ver 3.5</span></h1>
             <p>カラーミーショップの受注データと弥生販売の顧客台帳を照合して、売上伝票を自動作成</p>
         </div>
         
@@ -42,7 +42,7 @@
                     <!-- 弥生販売CSV -->
                     <div class="file-upload-box" id="yayoiUploadBox">
                         <div class="upload-icon">👥</div>
-                        <h3>弥生販売 顧客台帳CSV</h3>
+                        <h3>弥生販売 顧客台帳CSV/Excel</h3>
                         <p>ドラッグ&ドロップ または クリックして選択</p>
                         
                         <!-- LocalStorage保存データ表示 -->
@@ -54,7 +54,7 @@
                             <button id="useStoredDataBtn">💾 保存データを使用</button>
                         </div>
                         
-                        <input type="file" id="yayoiInput" accept=".csv" />
+                        <input type="file" id="yayoiInput" accept=".csv,.xlsx" />
                         <label for="yayoiInput" class="file-input-label">📂 新しいファイルで更新</label>
                         <div class="file-name" id="yayoiName"></div>
                         
@@ -171,7 +171,10 @@
     
     <!-- encoding.js (Shift-JIS変換用) -->
     <script src="https://cdn.jsdelivr.net/npm/encoding-japanese@2.0.0/encoding.min.js"></script>
-    
+
+    <!-- SheetJS (Excel読み込み用) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
     <!-- アプリケーションJavaScript -->
     <script type="module" src="js/main.js"></script>
 </body>

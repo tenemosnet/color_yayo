@@ -90,9 +90,29 @@ ES6 Modules with clear separation of concerns:
 - 代引き (Cash on Delivery) → nounyuCode = '001', adds COD fee row calculated via `calculateCODFee()`
 - その他 → nounyuCode = '003'
 
-**Output Format**: 59-field tab-delimited format matching Yayoi Sales import specification. Field 40 is fixed to 'テネモスショップ'.
+**Output Format**: 59-field tab-delimited format matching Yayoi Sales import specification. Field 20 (指定売上伝票) is fixed to '334401', Field 40 is fixed to 'テネモスショップ'.
 
 ## Configuration
+
+### Version Management
+
+Application version is defined in `js/config.js`:
+
+```javascript
+export const APP_VERSION = "3.4";
+```
+
+### Product Name Mapping
+
+Custom product names that differ between Color Me Shop and Yayoi Sales are mapped in `js/config.js`:
+
+```javascript
+export const productNameMap = {
+    '1364': 'Ag・uA(ｱｸﾞｱ)100mlｽﾌﾟﾚｰﾎﾞﾄﾙ',
+    '1369': 'Ag・uAアグア650mlパック(酵素水)',
+    // ...
+};
+```
 
 ### Add/Modify Set Products
 

@@ -4,7 +4,7 @@
  */
 
 import { checkStoredData, saveToLocalStorage, loadFromLocalStorage, clearLocalStorage, exportToJSON, importFromJSON } from './storage.js';
-import { parseColorMeCSV, parseYayoiCSV } from './parser.js';
+import { parseColorMeCSV, parseYayoiCSV, convertExcelToCSV } from './parser.js';
 import { performCustomerMatching } from './matcher.js';
 import { convertToYayoi, downloadAsShiftJIS } from './converter.js';
 import { showStatus, displaySummary, displayNewCustomers, displayOrders, toggleHelpModal, toggleAdvancedSettings, displayFileName, setButtonEnabled, getDateString } from './ui.js';
@@ -148,13 +148,33 @@ function handleColorMeFile(file) {
 }
 
 /**
- * 弥生販売CSVファイルを処理
+ * 弥生販売CSV/Excelファイルを処理（ファイル形式判定）
  */
 function handleYayoiFile(file) {
-    if (!file.name.endsWith('.csv')) {
-        showStatus('CSVファイルを選択してください', 'error');
+    const fileName = file.name.toLowerCase();
+    const isCSV = fileName.endsWith('.csv');
+    const isExcel = fileName.endsWith('.xlsx');
+
+    if (!isCSV && !isExcel) {
+        showStatus('CSVファイルまたはExcelファイル(.xlsx)を選択してください', 'error');
         return;
     }
+
+    if (isExcel) {
+        handleYayoiExcelFile(file);
+    } else {
+        handleYayoiCSVFile(file);
+    }
+}
+
+/**
+ * 弥生販売CSVファイルを処理
+ */
+function handleYayoiCSVFile(file) {
+    console.log('\n' + '='.repeat(50));
+    console.log('📄 CSVファイル読み込み開始');
+    console.log('ファイル名:', file.name);
+    console.log('='.repeat(50) + '\n');
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -170,9 +190,47 @@ function handleYayoiFile(file) {
             checkBothFilesLoaded();
         } catch (error) {
             showStatus(`❌ エラー: ${error.message}`, 'error');
+            console.error('CSV読み込みエラー:', error);
         }
     };
     reader.readAsText(file, 'UTF-8');
+}
+
+/**
+ * 弥生販売Excelファイルを処理
+ */
+function handleYayoiExcelFile(file) {
+    console.log('\n' + '='.repeat(50));
+    console.log('📊 Excelファイル読み込み開始');
+    console.log('ファイル名:', file.name);
+    console.log('='.repeat(50) + '\n');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const arrayBuffer = e.target.result;
+
+            // ExcelをCSVに変換
+            const csvText = convertExcelToCSV(arrayBuffer);
+
+            // 既存のCSVパーサーで処理
+            yayoiCustomers = parseYayoiCSV(csvText);
+
+            displayFileName('yayoiName', file.name);
+            showStatus(`✅ 弥生販売Excel読み込み完了（${yayoiCustomers.length}件）`, 'success');
+
+            // ボックスに読み込み完了クラスを追加
+            const box = document.getElementById('yayoiUploadBox');
+            if (box) box.classList.add('loaded');
+
+            checkBothFilesLoaded();
+        } catch (error) {
+            showStatus(`❌ エラー: ${error.message}`, 'error');
+            console.error('Excel読み込みエラー:', error);
+        }
+    };
+    // Excelはバイナリファイルなので ArrayBuffer として読み込み
+    reader.readAsArrayBuffer(file);
 }
 
 /**
