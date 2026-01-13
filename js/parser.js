@@ -201,7 +201,13 @@ export function parseYayoiCSV(csvText) {
 
     // ヘッダー行の内容をログ出力（CSV/Excel比較用）
     console.log('=== ヘッダー行検証 ===');
-    console.log('行4（ヘッダー行）:', headerRow.join(' | '));
+    console.log(`総カラム数: ${headerRow.length}カラム`);
+    console.log('\n【全カラム一覧】');
+    headerRow.forEach((col, idx) => {
+        const display = col === '' ? '(空列)' : col;
+        console.log(`  [${String(idx).padStart(2, '0')}] ${display}`);
+    });
+    console.log('');
 
     // カラムのインデックスを動的に検索（空列があるため）
     const indices = {
@@ -213,12 +219,12 @@ export function parseYayoiCSV(csvText) {
     };
 
     // ヘッダー検証結果をログ出力
-    console.log('検出されたカラムインデックス:');
-    console.log('  - コード:', indices.customerCode);
-    console.log('  - 名称:', indices.name);
-    console.log('  - フリガナ:', indices.furigana);
-    console.log('  - TEL:', indices.phone);
-    console.log('  - メールアドレス:', indices.email);
+    console.log('【検出されたカラムインデックス】');
+    console.log('  - コード:', indices.customerCode, `→ "${headerRow[indices.customerCode]}"`);
+    console.log('  - 名称:', indices.name, `→ "${headerRow[indices.name]}"`);
+    console.log('  - フリガナ:', indices.furigana, `→ "${headerRow[indices.furigana]}"`);
+    console.log('  - TEL:', indices.phone, `→ "${headerRow[indices.phone]}"`);
+    console.log('  - メールアドレス:', indices.email, `→ "${headerRow[indices.email]}"`);
 
     // 必須項目が見つからない場合はエラー
     if (indices.customerCode === -1 || indices.name === -1) {
@@ -235,9 +241,9 @@ export function parseYayoiCSV(csvText) {
         console.warn(`⚠️ 推奨項目が見つかりません: ${warnings.join(', ')}`);
         console.warn('顧客照合の精度が低下する可能性があります');
     } else {
-        console.log('✅ すべての必須・推奨項目が見つかりました');
+        console.log('\n✅ すべての必須・推奨項目が見つかりました');
     }
-    console.log('=====================');
+    console.log('=====================\n');
 
     const customers = [];
 
@@ -316,26 +322,35 @@ export function convertExcelToCSV(arrayBuffer) {
             blankrows: true    // 空行も含める（弥生CSVの構造を維持）
         });
 
-        // 変換後のCSV構造を検証（最初の6行を確認）
+        // 変換後のCSV構造を検証
         const lines = csvText.split('\n');
-        console.log('変換後のCSV構造（最初の6行）:');
+        console.log(`総行数: ${lines.length}行`);
+        console.log('\n【変換後のCSV構造（最初の6行）】');
         for (let i = 0; i < Math.min(6, lines.length); i++) {
-            const preview = lines[i].length > 80 ? lines[i].substring(0, 80) + '...' : lines[i];
+            const preview = lines[i].length > 100 ? lines[i].substring(0, 100) + '...' : lines[i];
             console.log(`  行${i}: ${preview}`);
         }
 
-        // 行4がヘッダー行になっているかの簡易チェック
+        // 行4がヘッダー行になっているかチェック
         if (lines.length > 4) {
             const headerLine = lines[4];
             if (headerLine.includes('コード') && headerLine.includes('名称')) {
-                console.log('✅ 行4にヘッダー（コード、名称）が検出されました');
+                console.log('\n✅ 行4にヘッダー（コード、名称）が検出されました');
+
+                // ヘッダー行を解析して全カラムを表示
+                const tempHeaderRow = parseCSVLine(headerLine);
+                console.log(`\n【Excelから変換されたヘッダー行の全カラム】`);
+                console.log(`総カラム数: ${tempHeaderRow.length}カラム`);
+                tempHeaderRow.forEach((col, idx) => {
+                    const display = col === '' ? '(空列)' : col;
+                    console.log(`  [${String(idx).padStart(2, '0')}] ${display}`);
+                });
             } else {
                 console.warn('⚠️ 警告: 行4にヘッダーが見つかりません。Excelの構造を確認してください');
             }
         }
 
-        console.log(`総行数: ${lines.length}行`);
-        console.log('========================');
+        console.log('\n========================\n');
 
         return csvText;
     } catch (error) {

@@ -1,7 +1,9 @@
 /**
  * ui.js - UI操作とイベントハンドラ
- * ver 3.4 - 基本動作修正完了版
+ * ver 3.5 - Excel対応版 + 代引き手数料表示修正
  */
+
+import { calculateCODFee } from './config.js';
 
 /**
  * ステータスメッセージを表示
@@ -120,7 +122,12 @@ export function displayNewCustomers(customers) {
 export function displayOrders(orders) {
     const section = document.getElementById('ordersSection');
     const list = document.getElementById('ordersList');
-    
+
+    console.log('\n' + '='.repeat(50));
+    console.log('📋 受注データ表示処理');
+    console.log('総受注件数:', orders.length);
+    console.log('='.repeat(50) + '\n');
+
     // 売上ID降順にソート（カラーミーと同じ順番）
     const sortedOrders = orders.map((order, originalIndex) => ({
         ...order,
@@ -130,7 +137,7 @@ export function displayOrders(orders) {
         const idB = parseInt(b.salesId) || 0;
         return idB - idA; // 降順
     });
-    
+
     let html = '<table class="orders-table"><thead><tr>';
     html += '<th class="checkbox-cell"><input type="checkbox" id="selectAllOrders" /></th>';
     html += '<th style="width: 100px;">売上ID</th>';
@@ -142,20 +149,47 @@ export function displayOrders(orders) {
     html += '<th style="width: 70px;">顧客状態</th>';
     html += '<th style="width: 80px;">得意先<br>コード</th>';
     html += '</tr></thead><tbody>';
-    
-    sortedOrders.forEach((order) => {
+
+    sortedOrders.forEach((order, index) => {
         const originalIndex = order.originalIndex;
         const itemCount = order.items.length;
-        const total = order.items.reduce((sum, item) => sum + item.subtotal, 0) + order.shippingFee - order.discountAmount;
-        
-        const statusBadge = order.matchedCustomer ? 
-            '<span class="status-badge existing">✅ 既存</span>' :
-            '<span class="status-badge new">⚠️ 新規</span>';
-        
-        const rowClass = order.matchedCustomer ? 'existing-customer' : 'new-customer';
-        
+
+        // 商品小計
+        const itemsTotal = order.items.reduce((sum, item) => sum + item.subtotal, 0);
+
         // 代引きは青色表示 + デフォルトチェック
         const isCOD = order.paymentMethod.includes('代引');
+
+        // 代引き手数料を計算（config.jsの関数を使用）
+        let codFee = 0;
+        if (isCOD) {
+            const paymentTotal = itemsTotal + order.shippingFee;
+            codFee = calculateCODFee(paymentTotal);
+        }
+
+        // 売上合計（商品小計 + 送料 + 代引き手数料 - 割引）
+        const total = itemsTotal + order.shippingFee + codFee - order.discountAmount;
+
+        // 最初の3件だけ詳細ログを出力
+        if (index < 3) {
+            console.log(`受注 #${order.salesId}:`, {
+                顧客名: order.customerName,
+                決済方法: order.paymentMethod,
+                代引き判定: isCOD,
+                商品小計: itemsTotal,
+                送料: order.shippingFee,
+                代引き手数料: codFee,
+                割引: order.discountAmount,
+                売上合計: total
+            });
+        }
+
+        const statusBadge = order.matchedCustomer ?
+            '<span class="status-badge existing">✅ 既存</span>' :
+            '<span class="status-badge new">⚠️ 新規</span>';
+
+        const rowClass = order.matchedCustomer ? 'existing-customer' : 'new-customer';
+
         const paymentColor = isCOD ? 'color: #2196F3;' : '';
         const paymentDisplay = isCOD ? '代引き' : order.paymentMethod;
         const defaultChecked = isCOD ? 'checked' : '';
