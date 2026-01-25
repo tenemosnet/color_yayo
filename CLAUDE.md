@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 カラーミーショップ（Color Me Shop）の受注データを弥生販売（Yayoi Sales）の売上伝票形式に変換するWebアプリケーション。月末の経理作業を効率化します。
 
-Browser-based ES6 Modules application. No build step required.
+Browser-based ES6 Modules application (ver 3.5). No build step required.
 
 ## Commands
 
@@ -38,9 +38,10 @@ ES6 Modules with clear separation of concerns:
    - `calculateCODFee(paymentTotal)`: Cash-on-delivery fee calculation logic
    - `YAYOI_FORMAT`: Output format constants (59 fields, tab-delimited, CRLF, Shift-JIS)
 
-3. **parser.js** - CSV parsing
+3. **parser.js** - CSV/Excel parsing
    - `parseColorMeCSV()`: Parses Shift-JIS encoded Color Me Shop CSV
    - `parseYayoiCSV()`: Parses UTF-8 BOM encoded Yayoi customer master CSV
+   - `convertExcelToCSV()`: Converts Excel (.xlsx) to CSV format using SheetJS
 
 4. **matcher.js** - Customer matching logic
    - Priority 1: Email address
@@ -66,7 +67,7 @@ ES6 Modules with clear separation of concerns:
 **Two-step workflow** (required because new customers must be imported into Yayoi before generating sales slips):
 
 **Step 1: Customer Matching & Registration**
-1. Upload Color Me CSV (Shift-JIS) + Yayoi customer master CSV (UTF-8 BOM)
+1. Upload Color Me CSV (Shift-JIS) + Yayoi customer master (CSV UTF-8 BOM or Excel .xlsx)
 2. Parse files → extract orders and customer data
 3. Match customers by priority: email → phone (hyphen-normalized) → full name
 4. Generate new customer codes starting from `max(existing codes) + 1`
@@ -99,7 +100,7 @@ ES6 Modules with clear separation of concerns:
 Application version is defined in `js/config.js`:
 
 ```javascript
-export const APP_VERSION = "3.4";
+export const APP_VERSION = "3.5";
 ```
 
 ### Product Name Mapping
@@ -167,9 +168,11 @@ export const YAYOI_FORMAT = {
 
 ## File Encoding Handling
 
-- **Input**: Color Me CSV (Shift-JIS), Yayoi CSV (UTF-8 BOM)
+- **Input**: Color Me CSV (Shift-JIS), Yayoi customer master (CSV UTF-8 BOM or Excel .xlsx)
 - **Output**: All TXT files (Shift-JIS, tab-delimited, CRLF)
-- **External dependency**: encoding.js (CDN loaded in index.html) - handles Shift-JIS conversion via `downloadAsShiftJIS()` in converter.js
+- **External dependencies** (CDN loaded in index.html):
+  - encoding.js - handles Shift-JIS conversion via `downloadAsShiftJIS()` in converter.js
+  - SheetJS (xlsx.js) - handles Excel (.xlsx) file parsing via `convertExcelToCSV()` in parser.js
 
 ## Common Issues
 
