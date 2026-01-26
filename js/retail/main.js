@@ -3,7 +3,7 @@
  * ver 3.2 - UI改善版
  */
 
-import { checkStoredData, saveToLocalStorage, loadFromLocalStorage, clearLocalStorage, exportToJSON, importFromJSON } from './storage.js';
+import { checkStoredData, saveToLocalStorage, loadFromLocalStorage, clearLocalStorage, exportToJSON, importFromJSON } from '../common/storage.js';
 import { parseColorMeCSV, parseYayoiCSV, convertExcelToCSV } from './parser.js';
 import { performCustomerMatching } from './matcher.js';
 import { convertToYayoi, downloadAsShiftJIS } from './converter.js';

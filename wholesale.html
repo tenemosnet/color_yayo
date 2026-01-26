@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>卸販売→弥生販売 変換ツール ver 4.0</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* 卸販売ページ専用スタイル */
+        .wholesale-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wholesale-header h1 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .wholesale-header .version {
+            display: inline-block;
+            background: rgba(255,255,255,0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .back-link {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            transition: background 0.3s;
+        }
+
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* タブメニュー */
+        .tab-menu {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 20px 30px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .tab-button:hover {
+            background: #e9ecef;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            background: white;
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #667eea;
+        }
+
+        .tab-button .tab-icon {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* タブコンテンツ */
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 卸販売共通スタイル */
+        .wholesale-section {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .wholesale-section h2 {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* テキストエリア */
+        .email-textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .email-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .email-textarea::placeholder {
+            color: #aaa;
+        }
+
+        /* 商品テーブル */
+        .product-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .product-table thead {
+            background: #667eea;
+            color: white;
+        }
+
+        .product-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .product-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .product-table tbody tr:hover {
+            background: #f8f9ff;
+        }
+
+        .product-table input[type="number"] {
+            width: 100px;
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: right;
+        }
+
+        .product-table input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* 合計表示 */
+        .total-row {
+            background: #667eea !important;
+            color: white;
+            font-weight: 600;
+        }
+
+        .total-row td {
+            border-bottom: none;
+        }
+
+        /* ボタン */
+        .wholesale-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .wholesale-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .wholesale-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .wholesale-btn.secondary {
+            background: #6c757d;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        /* 設定フォーム */
+        .settings-form {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* ステータス */
+        .wholesale-status {
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .wholesale-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .wholesale-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .wholesale-status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        /* プレビューエリア */
+        .preview-area {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .preview-area h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="wholesale-header">
+            <h1>🏭 卸販売→弥生販売 変換ツール <span class="version">ver 4.0</span></h1>
+            <a href="index.html" class="back-link">
+                ← トップに戻る
+            </a>
+        </div>
+
+        <!-- タブメニュー -->
+        <div class="tab-menu">
+            <button class="tab-button active" data-tab="yamazen">
+                <span class="tab-icon">📦</span>
+                山善様
+            </button>
+            <button class="tab-button" data-tab="yatsuha">
+                <span class="tab-icon">📄</span>
+                やつは様
+            </button>
+        </div>
+
+        <div class="content">
+            <!-- ステータス表示 -->
+            <div id="wholesaleStatus" class="wholesale-status" style="display: none;"></div>
+
+            <!-- 山善様タブ -->
+            <div id="yamazen-tab" class="tab-content active">
+                <div class="wholesale-section">
+                    <h2>📧 メール本文を貼り付け</h2>
+                    <textarea id="yamazenEmailText" class="email-textarea" placeholder="山善様からのメール本文をここに貼り付けてください...
+
+例：
+1234 商品名A 10本
+5678 商品名B 5個"></textarea>
+                    <div class="button-group">
+                        <button id="yamazenParseBtn" class="wholesale-btn">
+                            🔍 商品データを抽出
+                        </button>
+                        <button id="yamazenClearBtn" class="wholesale-btn secondary">
+                            クリア
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 商品リスト（抽出後に表示） -->
+                <div id="yamazenProductSection" class="wholesale-section" style="display: none;">
+                    <h2>📋 商品リスト（単価を入力）</h2>
+                    <div id="yamazenProductTable"></div>
+                </div>
+
+                <!-- 変換設定（商品抽出後に表示） -->
+                <div id="yamazenConvertSection" class="wholesale-section" style="display: none;">
+                    <h2>⚙️ 変換設定</h2>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label for="yamazenDenpyoNo">伝票番号</label>
+                            <input type="text" id="yamazenDenpyoNo" placeholder="伝票番号を入力">
+                        </div>
+                        <div class="form-group">
+                            <label for="yamazenOrderDate">受注日</label>
+                            <input type="date" id="yamazenOrderDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="yamazenTantousha">担当者コード</label>
+                            <input type="text" id="yamazenTantousha" value="11">
+                        </div>
+                    </div>
+                    <button id="yamazenConvertBtn" class="wholesale-btn" style="width: 100%;">
+                        🚀 弥生販売TXTをダウンロード
+                    </button>
+                </div>
+            </div>
+
+            <!-- やつは様タブ -->
+            <div id="yatsuha-tab" class="tab-content">
+                <div class="wholesale-section">
+                    <h2>📎 EMLファイルをアップロード</h2>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        やつは様からの注文メール（.eml形式）をドラッグ&ドロップまたは選択してください。<br>
+                        添付されているPDFから自動的に注文データを抽出します。
+                    </p>
+                    <div class="file-upload-box" id="yatsuhaUploadBox" style="border-color: #667eea;">
+                        <div class="upload-icon">📧</div>
+                        <h3 style="color: #667eea;">EMLファイル</h3>
+                        <p>ドラッグ&ドロップ または クリックして選択</p>
+                        <input type="file" id="yatsuhaInput" accept=".eml" style="display: none;">
+                        <label for="yatsuhaInput" class="wholesale-btn" style="display: inline-block; margin-top: 10px;">
+                            📂 ファイルを選択
+                        </label>
+                        <div class="file-name" id="yatsuhaFileName"></div>
+                    </div>
+                </div>
+
+                <!-- プレビュー（PDF抽出後に表示） -->
+                <div id="yatsuhaPreviewSection" class="wholesale-section" style="display: none;">
+                    <h2>📋 抽出データプレビュー</h2>
+                    <div id="yatsuhaProductTable"></div>
+                </div>
+
+                <!-- 変換設定（データ抽出後に表示） -->
+                <div id="yatsuhaConvertSection" class="wholesale-section" style="display: none;">
+                    <h2>⚙️ 変換設定</h2>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label for="yatsuhaDenpyoNo">伝票番号</label>
+                            <input type="text" id="yatsuhaDenpyoNo" placeholder="伝票番号を入力">
+                        </div>
+                        <div class="form-group">
+                            <label for="yatsuhaOrderDate">受注日</label>
+                            <input type="date" id="yatsuhaOrderDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="yatsuhaTantousha">担当者コード</label>
+                            <input type="text" id="yatsuhaTantousha" value="11">
+                        </div>
+                    </div>
+                    <button id="yatsuhaConvertBtn" class="wholesale-btn" style="width: 100%;">
+                        🚀 弥生販売TXTをダウンロード
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- encoding.js (Shift-JIS変換用) -->
+    <script src="https://cdn.jsdelivr.net/npm/encoding-japanese@2.0.0/encoding.min.js"></script>
+
+    <!-- タブ切り替えスクリプト -->
+    <script>
+        // タブ切り替え
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                // アクティブタブを切り替え
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                button.classList.add('active');
+                const tabId = button.dataset.tab + '-tab';
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // 今日の日付をデフォルト設定
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('yamazenOrderDate').value = today;
+        document.getElementById('yatsuhaOrderDate').value = today;
+    </script>
+
+    <!-- メインJavaScript（後で実装） -->
+    <!-- <script type="module" src="js/wholesale/yamazen/main.js"></script> -->
+</body>
+</html>

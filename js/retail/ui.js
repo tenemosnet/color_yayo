@@ -3,7 +3,7 @@
  * ver 3.5 - Excel対応版 + 代引き手数料表示修正
  */
 
-import { calculateCODFee } from './config.js';
+import { calculateCODFee } from '../common/config.js';
 
 /**
  * ステータスメッセージを表示

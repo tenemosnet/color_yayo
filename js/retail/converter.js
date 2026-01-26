@@ -3,7 +3,7 @@
  * ver 3.2 - UI改善版
  */
 
-import { setProducts, productNameMap, shippingCodes, calculateCODFee, YAYOI_FORMAT } from './config.js';
+import { setProducts, productNameMap, shippingCodes, calculateCODFee, YAYOI_FORMAT } from '../common/config.js';
 
 /**
  * 商品がセット商品かチェック

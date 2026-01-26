@@ -3,7 +3,7 @@
  * ver 3.4 - 基本動作修正完了版
  */
 
-import { saveToLocalStorage } from './storage.js';
+import { saveToLocalStorage } from '../common/storage.js';
 
 /**
  * CSVテキストを行に分割（ダブルクォート内の改行を考慮）
