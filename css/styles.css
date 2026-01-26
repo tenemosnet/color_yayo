@@ -718,3 +718,33 @@
         input:-ms-input-placeholder {
             color: #999;
         }
+
+        /* ファイルプレビュー画像 */
+        .file-preview-image {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+        }
+
+        .file-preview-image img {
+            max-width: 120px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .file-preview-label {
+            display: block;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .file-upload-box.loaded .file-preview-image {
+            display: none;
+        }
