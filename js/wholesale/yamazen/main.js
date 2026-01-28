@@ -5,7 +5,7 @@
 
 import { readEmlFile, formatDateForInput } from './eml-parser.js';
 import { extractProductData, calculateAmount, calculateTotal } from './text-parser.js';
-import { convertToYayoiFormat, downloadAsShiftJIS, getDateString } from './converter.js';
+import { convertToYayoiFormat, downloadAsShiftJIS, getDateString, determineNounyuCode } from './converter.js';
 import { loadProductMasterFile, loadProductMaster, getProductMasterInfo, getWholesalePrice, getProductName, clearProductMaster } from '../common/product-master.js';
 import {
     loadCustomerMasterFile,
@@ -221,8 +221,23 @@ async function handleEmlFile(file) {
             from: emlData.from,
             domain: emlData.fromDomain,
             organization: emlData.organization,
-            subject: emlData.subject
+            subject: emlData.subject,
+            attachments: emlData.attachments ? emlData.attachments.length : 0
         });
+
+        // PDF添付ファイルがあればPDFパーサーで処理
+        if (emlData.attachments && emlData.attachments.length > 0) {
+            const pdfAttachment = emlData.attachments.find(a =>
+                a.filename.toLowerCase().endsWith('.pdf') ||
+                a.contentType.toLowerCase().includes('application/pdf')
+            );
+
+            if (pdfAttachment) {
+                console.log('PDF添付ファイルを検出、PDFパーサーで処理:', pdfAttachment.filename);
+                await handleEmlWithPdfAttachment(file, emlData, pdfAttachment);
+                return;
+            }
+        }
 
         // ファイル名を保存・表示
         currentEmlFileName = file.name;
@@ -234,8 +249,10 @@ async function handleEmlFile(file) {
             console.log('顧客検出成功:', detectedCustomer);
             displayDetectedCustomer(detectedCustomer);
         } else {
-            console.warn('顧客を検出できませんでした');
-            showStatus('⚠️ 顧客を特定できませんでした。顧客マスタを確認してください。', 'error');
+            // 卸販売では顧客特定が必須 - エラーで中断
+            console.error('顧客を検出できませんでした - 処理中断');
+            showStatus('❌ 顧客を特定できませんでした。顧客マスタにドメイン/会社名が登録されているか確認してください。', 'error');
+            return;  // 処理を中断
         }
 
         // 日付を設定
@@ -249,7 +266,7 @@ async function handleEmlFile(file) {
             }
         }
 
-        // 商品データを抽出
+        // 商品データを抽出（テキストメール）
         currentProducts = extractProductData(emlData.body);
 
         if (currentProducts.length === 0) {
@@ -338,8 +355,10 @@ async function handlePdfFile(file) {
         }
 
         if (!detectedCustomer) {
-            console.warn('顧客を検出できませんでした');
-            showStatus('⚠️ 顧客を特定できませんでした。顧客マスタを確認してください。', 'error');
+            // 卸販売では顧客特定が必須 - エラーで中断
+            console.error('顧客を検出できませんでした - 処理中断');
+            showStatus('❌ 顧客を特定できませんでした。顧客マスタにドメイン/会社名が登録されているか確認してください。', 'error');
+            return;  // 処理を中断
         }
 
         // 日付を設定
@@ -957,6 +976,9 @@ function handleBatchConvert() {
             // 伝票番号を連番で割り当て
             const denpyoNo = String(currentDenpyoNo).padStart(4, '0');
 
+            // 納入先コードを決定
+            const nounyuCode = determineNounyuCode(order.customer);
+
             // 弥生形式に変換
             const txtContent = convertToYayoiFormat(order.products, {
                 denpyoNo: denpyoNo,
@@ -964,11 +986,13 @@ function handleBatchConvert() {
                 tantoshaCode: order.tantoshaCode,
                 tokuisakiCode: order.customer.code,
                 customerName: order.customer.name,
-                shippingCode: null  // 送料は既にproductsに含まれている
+                shippingCode: null,  // 送料は既にproductsに含まれている
+                torihikiKubun: order.customer.torihikiKubun || 2,  // 取引区分
+                nounyuCode: nounyuCode  // 納入先コード
             });
 
             allLines.push(txtContent);
-            console.log(`注文${index + 1}: ${order.customer.name} → 伝票番号 ${denpyoNo}`);
+            console.log(`注文${index + 1}: ${order.customer.name} → 伝票番号 ${denpyoNo}, 取引区分=${order.customer.torihikiKubun}, 納入先=${nounyuCode}`);
 
             currentDenpyoNo++;
         });
@@ -1202,4 +1226,243 @@ function handleClearCustomerMaster() {
     if (fileInput) fileInput.value = '';
 
     showStatus('✅ 顧客マスタをクリアしました', 'success');
+}
+
+/**
+ * EMLの添付PDFを処理
+ * @param {File} emlFile - 元のEMLファイル
+ * @param {Object} emlData - EML解析結果
+ * @param {Object} pdfAttachment - PDF添付ファイル {filename, contentType, data: ArrayBuffer}
+ */
+async function handleEmlWithPdfAttachment(emlFile, emlData, pdfAttachment) {
+    showStatus('PDF添付ファイルを解析中...', 'info');
+
+    try {
+        // PDF.jsが読み込まれているか確認
+        if (typeof pdfjsLib === 'undefined') {
+            throw new Error('PDF.js が読み込まれていません');
+        }
+
+        // ArrayBufferからPDFを解析
+        const pdf = await pdfjsLib.getDocument({ data: pdfAttachment.data }).promise;
+        console.log('PDF読み込み完了: ページ数=', pdf.numPages);
+
+        // 全ページのテキストを抽出
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n';
+        }
+
+        console.log('PDF全文抽出完了');
+        console.log('抽出テキスト（先頭500文字）:', fullText.substring(0, 500));
+
+        // やつはPDFパーサーのロジックを使用して商品を抽出
+        const pdfProducts = parseOrderTableFromText(fullText);
+
+        if (pdfProducts.length === 0) {
+            showStatus('PDFから商品データが見つかりませんでした。', 'error');
+            return;
+        }
+
+        // ファイル名を保存・表示（EMLファイル名 + PDF添付名）
+        currentEmlFileName = `${emlFile.name} (添付: ${pdfAttachment.filename})`;
+        displayFileName(currentEmlFileName);
+
+        // 顧客を検出（EMLのメタデータから）
+        detectedCustomer = detectCustomerFromEml(emlData);
+        if (detectedCustomer) {
+            console.log('顧客検出成功:', detectedCustomer);
+            displayDetectedCustomer(detectedCustomer);
+        } else {
+            // 卸販売では顧客特定が必須 - エラーで中断
+            console.error('顧客を検出できませんでした - 処理中断');
+            showStatus('❌ 顧客を特定できませんでした。顧客マスタにドメイン/会社名が登録されているか確認してください。', 'error');
+            return;  // 処理を中断
+        }
+
+        // 日付を設定（EMLのDateヘッダーから）
+        if (emlData.date) {
+            emailDate = emlData.date;
+            const dateInput = document.getElementById('yamazenOrderDate');
+            if (dateInput && emlData.date.length === 8) {
+                const formatted = `${emlData.date.slice(0,4)}-${emlData.date.slice(4,6)}-${emlData.date.slice(6,8)}`;
+                dateInput.value = formatted;
+            }
+        }
+
+        // 商品データを設定
+        currentProducts = pdfProducts.map(p => ({
+            code: p.code,
+            name: '',  // 商品マスタから取得
+            quantity: p.quantity,
+            unit: p.unit || '',
+            unitPrice: 0,
+            amount: 0
+        }));
+
+        // 商品マスタから単価・商品名を自動設定（顧客の単価種類に応じて）
+        const priceType = detectedCustomer ? detectedCustomer.priceType : 2;
+        currentProducts = applyPricesFromMaster(currentProducts, priceType);
+
+        // 送料行を追加（顧客の都道府県から）
+        if (detectedCustomer && detectedCustomer.prefecture) {
+            const shippingCode = shippingCodes[detectedCustomer.prefecture];
+            if (shippingCode) {
+                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType);
+                const shippingPrice = toTaxIncluded(shippingPriceExcludingTax);
+                const shippingName = getProductName(shippingCode) || '送料';
+                currentProducts.push({
+                    code: shippingCode,
+                    name: shippingName,
+                    quantity: 1,
+                    unit: '',
+                    unitPrice: shippingPrice,
+                    amount: shippingPrice,
+                    isShipping: true
+                });
+                console.log('送料行追加:', shippingCode, shippingName, `税別${shippingPriceExcludingTax} → 税込${shippingPrice}`);
+            }
+        }
+
+        // アップロードボックスに完了マーク
+        const uploadBox = document.getElementById('yamazenUploadBox');
+        if (uploadBox) uploadBox.classList.add('loaded');
+
+        // 商品テーブルを表示
+        displayProductTable(currentProducts);
+
+        // 変換セクションを表示
+        document.getElementById('yamazenProductSection').style.display = 'block';
+        document.getElementById('yamazenConvertSection').style.display = 'block';
+
+        // 担当者コードを自動設定
+        if (detectedCustomer && detectedCustomer.tantosha) {
+            const tantoshaInput = document.getElementById('yamazenTantousha');
+            if (tantoshaInput) tantoshaInput.value = detectedCustomer.tantosha;
+        }
+
+        // 商品件数から送料を除外
+        const productCount = currentProducts.filter(p => !p.isShipping).length;
+        const statusMsg = detectedCustomer
+            ? `✅ PDF添付から${productCount}件の商品を抽出しました（${detectedCustomer.name}、送料込み）`
+            : `✅ PDF添付から${productCount}件の商品を抽出しました`;
+        showStatus(statusMsg, 'success');
+
+    } catch (error) {
+        showStatus(`❌ PDF添付解析エラー: ${error.message}`, 'error');
+        console.error('PDF添付処理エラー:', error);
+    }
+}
+
+/**
+ * PDFテキストから注文テーブルを解析（やつはPDFパーサーのロジックを移植）
+ * @param {string} text - PDFから抽出したテキスト
+ * @returns {Array} 商品リスト [{code, quantity, unit}]
+ */
+function parseOrderTableFromText(text) {
+    const products = [];
+    const processedCodes = new Set();
+
+    // 除外すべきコード（日付などから誤検出される可能性）
+    const excludeCodes = new Set(['2026', '2025', '2027', '2024', '2028', '2029', '2030']);
+
+    // テキストを正規化
+    const normalizedText = text.replace(/\s+/g, ' ');
+
+    // 商品コード（4桁、1または2で始まる）を検出
+    const codePattern = /\b([12]\d{3})\b/g;
+    let match;
+
+    while ((match = codePattern.exec(normalizedText)) !== null) {
+        const code = match[1];
+
+        // 除外コード（日付など）をスキップ
+        if (excludeCodes.has(code)) continue;
+
+        // 既に処理済みならスキップ
+        if (processedCodes.has(code)) continue;
+
+        // コードの後のテキストを取得（次のコードまで）
+        const startPos = match.index + match[0].length;
+        const nextCodeMatch = normalizedText.substring(startPos).match(/\b[12]\d{3}\b/);
+        const endPos = nextCodeMatch
+            ? startPos + nextCodeMatch.index
+            : Math.min(startPos + 200, normalizedText.length);
+
+        const segment = normalizedText.substring(startPos, endPos);
+
+        // 「消費税8%」「卸8掛」「電話番号」などのパターンを除外
+        const cleanedSegment = segment
+            .replace(/消費税\d+%/g, '')
+            .replace(/卸\d+掛/g, '')
+            .replace(/税\d+%/g, '')
+            .replace(/TEL[:\s]*[\d\-]+/gi, '')
+            .replace(/\d{2,4}-\d{2,4}-\d{4}/g, '');
+
+        // セグメントから数字を抽出
+        const numbers = cleanedSegment.match(/\b\d{1,3}(?:,\d{3})*\b|\b\d+\b/g);
+        if (!numbers || numbers.length < 3) continue;
+
+        // 数字を解析（カンマを除去）
+        const parsedNumbers = numbers.map(n => parseInt(n.replace(/,/g, ''), 10));
+
+        console.log(`解析中: コード=${code}, 数字列=${JSON.stringify(parsedNumbers)}`);
+
+        // 卸単位の候補
+        const unitCandidates = [1, 3, 4, 6, 12, 20];
+
+        // パターンマッチング：価格2つ → 卸単位 → 数量？
+        let quantity = null;
+
+        // 数字列から「小売価格, 卸価格, 卸単位, 数量」のパターンを探す
+        for (let i = 0; i < parsedNumbers.length - 2; i++) {
+            const n1 = parsedNumbers[i];      // 小売価格候補
+            const n2 = parsedNumbers[i + 1];  // 卸価格候補
+            const n3 = parsedNumbers[i + 2];  // 卸単位候補
+
+            if (n1 >= 300 && n2 < n1 && n2 > 0 && unitCandidates.includes(n3)) {
+                // 卸単位の後に数字があれば、それが注文数量
+                if (i + 3 < parsedNumbers.length) {
+                    const n4 = parsedNumbers[i + 3];
+                    if (n4 > 0 && n4 < 1000) {
+                        quantity = n4;
+                        console.log(`  パターン1検出: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${n4}`);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // フォールバック: 低価格商品用
+        if (quantity === null && parsedNumbers.length >= 4) {
+            for (let i = 0; i < parsedNumbers.length - 3; i++) {
+                const n1 = parsedNumbers[i];
+                const n2 = parsedNumbers[i + 1];
+                const n3 = parsedNumbers[i + 2];
+                const n4 = parsedNumbers[i + 3];
+
+                if (n1 >= 100 && n2 < n1 && n2 > 0 && unitCandidates.includes(n3) && n4 > 0 && n4 < 1000) {
+                    quantity = n4;
+                    console.log(`  パターン2検出（低価格）: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${n4}`);
+                    break;
+                }
+            }
+        }
+
+        // 数量が見つかった場合のみ追加
+        if (quantity !== null && quantity > 0) {
+            products.push({
+                code: code,
+                quantity: quantity,
+                unit: ''
+            });
+            processedCodes.add(code);
+            console.log(`注文検出: コード=${code}, 数量=${quantity}`);
+        }
+    }
+
+    return products;
 }

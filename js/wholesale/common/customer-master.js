@@ -55,7 +55,8 @@ export function parseCustomerMasterCSV(csvText) {
         name: findColumnIndex(headers, '名称'),
         address1: findColumnIndex(headers, '住所１'),
         tantosha: findColumnIndex(headers, '担当者'),
-        tankaSyurui: findColumnIndex(headers, '単価種類')
+        tankaSyurui: findColumnIndex(headers, '単価種類'),
+        torihikiKubun: findColumnIndex(headers, '取引区分')
     };
 
     console.log('カラムインデックス:', indices);
@@ -100,6 +101,10 @@ export function parseCustomerMasterCSV(csvText) {
         const tankaSyurui = (fields[indices.tankaSyurui] || '').trim();
         const priceType = parsePriceType(tankaSyurui);
 
+        // 取引区分（"掛売", "現金", "都度請求", "サンプル" → 1, 2, 3, 4）
+        const torihikiKubunStr = (fields[indices.torihikiKubun] || '').trim();
+        const torihikiKubun = parseTorihikiKubun(torihikiKubunStr);
+
         customerMap.set(code, {
             code,
             name,
@@ -107,7 +112,8 @@ export function parseCustomerMasterCSV(csvText) {
             prefecture,
             tantosha,
             tankaSyurui,
-            priceType  // 1, 2, or 3
+            priceType,  // 1, 2, or 3
+            torihikiKubun  // 1, 2, 3, or 4
         });
     }
 
@@ -192,6 +198,20 @@ function parsePriceType(tankaSyurui) {
     if (tankaSyurui.includes('２') || tankaSyurui.includes('2')) return 2;
     if (tankaSyurui.includes('３') || tankaSyurui.includes('3')) return 3;
     return 1;
+}
+
+/**
+ * 取引区分文字列から数値を抽出
+ * @param {string} torihikiKubunStr - "掛売", "現金", "都度請求", "サンプル"
+ * @returns {number} 1, 2, 3, or 4（デフォルトは1:掛売）
+ */
+function parseTorihikiKubun(torihikiKubunStr) {
+    if (!torihikiKubunStr) return 1;
+
+    if (torihikiKubunStr.includes('現金') || torihikiKubunStr.includes('2') || torihikiKubunStr.includes('２')) return 2;
+    if (torihikiKubunStr.includes('都度') || torihikiKubunStr.includes('3') || torihikiKubunStr.includes('３')) return 3;
+    if (torihikiKubunStr.includes('サンプル') || torihikiKubunStr.includes('4') || torihikiKubunStr.includes('４')) return 4;
+    return 1;  // デフォルト: 掛売
 }
 
 /**
@@ -292,6 +312,16 @@ export function findCustomerByName(searchName) {
 }
 
 /**
+ * ドメインキーワード→日本語名のマッピング
+ * ローマ字ドメインから日本語会社名を検索するため
+ */
+const domainToNameMapping = {
+    'yatsuha': 'やつは',
+    'yamazen': '山善',
+    // 他のドメイン→日本語名の対応を追加
+};
+
+/**
  * メールドメインで顧客を検索
  * @param {string} domain - メールドメイン（例: "yamazen.info"）
  * @returns {Object|null} マッチした顧客情報
@@ -302,17 +332,35 @@ export function findCustomerByDomain(domain) {
 
     // ドメインからキーワードを抽出（例: "yamazen.info" → "yamazen"）
     const keyword = domain.split('.')[0].toLowerCase();
+    console.log('ドメイン検索: domain=', domain, 'keyword=', keyword);
 
+    // まずローマ字キーワードで直接検索
     for (const [code, customer] of master) {
         const normalizedName = normalizeCompanyName(customer.name).toLowerCase();
         if (normalizedName.includes(keyword)) {
             // "×使用しない×" などを除外
             if (customer.name.includes('×')) continue;
-            console.log('顧客マッチ（ドメイン）:', domain, '→', customer.name, '→', code);
+            console.log('顧客マッチ（ドメイン直接）:', domain, '→', customer.name, '→', code);
             return customer;
         }
     }
 
+    // マッピングテーブルから日本語名に変換して検索
+    const japaneseName = domainToNameMapping[keyword];
+    if (japaneseName) {
+        console.log('ドメインマッピング: ', keyword, '→', japaneseName);
+        for (const [code, customer] of master) {
+            const normalizedName = normalizeCompanyName(customer.name);
+            if (normalizedName.includes(japaneseName)) {
+                // "×使用しない×" などを除外
+                if (customer.name.includes('×')) continue;
+                console.log('顧客マッチ（ドメインマッピング）:', domain, '→', japaneseName, '→', customer.name, '→', code);
+                return customer;
+            }
+        }
+    }
+
+    console.log('ドメインで顧客が見つかりませんでした:', domain);
     return null;
 }
 

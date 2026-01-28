@@ -229,7 +229,7 @@ function decodeQuotedPrintable(data) {
 /**
  * EMLファイルを読み込んで解析
  * @param {File} file - EMLファイル
- * @returns {Promise<Object>} { body, date, subject }
+ * @returns {Promise<Object>} { body, date, subject, attachments }
  */
 export function readEmlFile(file) {
     return new Promise((resolve, reject) => {
@@ -241,7 +241,12 @@ export function readEmlFile(file) {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const result = parseEmlFile(e.target.result);
+                const emlContent = e.target.result;
+                const result = parseEmlFile(emlContent);
+
+                // 添付ファイルを抽出
+                result.attachments = extractAttachments(emlContent);
+
                 resolve(result);
             } catch (error) {
                 reject(new Error(`EMLファイルの解析に失敗しました: ${error.message}`));
@@ -252,4 +257,115 @@ export function readEmlFile(file) {
         };
         reader.readAsText(file, 'UTF-8');
     });
+}
+
+/**
+ * EMLファイルから添付ファイルを抽出
+ * @param {string} emlContent - EMLファイルの内容
+ * @returns {Array} 添付ファイルの配列 [{ filename, contentType, data }]
+ */
+function extractAttachments(emlContent) {
+    const attachments = [];
+
+    // Content-Typeからboundaryを取得
+    const boundaryMatch = emlContent.match(/boundary="?([^"\r\n;]+)"?/i);
+    if (!boundaryMatch) {
+        console.log('マルチパートメッセージではありません（boundary なし）');
+        return attachments;
+    }
+
+    const boundary = boundaryMatch[1];
+    console.log('MIME boundary:', boundary);
+
+    // boundaryで分割
+    const parts = emlContent.split(new RegExp(`--${escapeRegex(boundary)}`));
+
+    for (let i = 1; i < parts.length; i++) {
+        const part = parts[i];
+
+        // 終了マーカー（--）をスキップ
+        if (part.trim().startsWith('--')) continue;
+
+        // ヘッダーと本文を分離
+        const headerEndIndex = part.search(/\r?\n\r?\n/);
+        if (headerEndIndex === -1) continue;
+
+        const partHeader = part.substring(0, headerEndIndex);
+        const partBody = part.substring(headerEndIndex).replace(/^\r?\n\r?\n/, '');
+
+        // Content-Typeを確認
+        const contentTypeMatch = partHeader.match(/Content-Type:\s*([^\r\n;]+)/i);
+        const contentType = contentTypeMatch ? contentTypeMatch[1].trim() : '';
+
+        // Content-Dispositionを確認（attachment または filename）
+        const dispositionMatch = partHeader.match(/Content-Disposition:\s*([^\r\n]+)/i);
+        const disposition = dispositionMatch ? dispositionMatch[1] : '';
+
+        // ファイル名を取得
+        let filename = '';
+        const filenameMatch = partHeader.match(/filename="?([^"\r\n;]+)"?/i)
+            || partHeader.match(/name="?([^"\r\n;]+)"?/i);
+        if (filenameMatch) {
+            filename = decodeMimeHeader(filenameMatch[1].trim());
+        }
+
+        // PDFファイルを検出
+        const isPdf = contentType.toLowerCase().includes('application/pdf')
+            || filename.toLowerCase().endsWith('.pdf');
+
+        if (isPdf && filename) {
+            console.log('PDF添付ファイルを検出:', filename);
+
+            // Content-Transfer-Encodingを確認
+            const encodingMatch = partHeader.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i);
+            const encoding = encodingMatch ? encodingMatch[1].trim().toLowerCase() : '';
+
+            // Base64デコード
+            let data = null;
+            if (encoding === 'base64') {
+                data = decodeBase64ToArrayBuffer(partBody);
+            }
+
+            if (data) {
+                attachments.push({
+                    filename: filename,
+                    contentType: contentType,
+                    data: data  // ArrayBuffer
+                });
+                console.log('PDF添付ファイルを抽出:', filename, data.byteLength, 'bytes');
+            }
+        }
+    }
+
+    return attachments;
+}
+
+/**
+ * 正規表現用にエスケープ
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Base64をArrayBufferにデコード
+ * @param {string} base64 - Base64エンコードされたデータ
+ * @returns {ArrayBuffer|null}
+ */
+function decodeBase64ToArrayBuffer(base64) {
+    try {
+        // 改行とスペースを除去
+        const cleaned = base64.replace(/[\r\n\s]/g, '');
+        const binary = atob(cleaned);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+    } catch (e) {
+        console.error('Base64 to ArrayBuffer decode error:', e);
+        return null;
+    }
 }

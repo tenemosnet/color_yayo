@@ -29,7 +29,9 @@ export function convertToYayoiFormat(products, settings) {
         customerName = '',
         shippingCode = null,
         shippingUnitPrice = 0,
-        shippingName = '送料'
+        shippingName = '送料',
+        torihikiKubun = 2,      // 取引区分（1:掛売, 2:現金, 3:都度請求, 4:サンプル）
+        nounyuCode = '003'      // 納入コード
     } = settings;
 
     const tsvLines = [];
@@ -44,7 +46,8 @@ export function convertToYayoiFormat(products, settings) {
             denpyoDate,
             denpyoNo: String(denpyoNo).padStart(4, '0'),
             tokuisakiCode: tokuisakiCode,
-            nounyuCode: DEFAULT_CONFIG.NOUNYU_CODE,
+            nounyuCode: nounyuCode,
+            torihikiKubun: torihikiKubun,
             tantoshaCode,
             rowCode: rowCode++,
             productCode: product.code,
@@ -64,7 +67,8 @@ export function convertToYayoiFormat(products, settings) {
             denpyoDate,
             denpyoNo: String(denpyoNo).padStart(4, '0'),
             tokuisakiCode: tokuisakiCode,
-            nounyuCode: DEFAULT_CONFIG.NOUNYU_CODE,
+            nounyuCode: nounyuCode,
+            torihikiKubun: torihikiKubun,
             tantoshaCode,
             rowCode: rowCode++,
             productCode: shippingCode,
@@ -131,7 +135,7 @@ function createRow(data) {
         data.denpyoDate,                // 4: 伝票日付
         data.denpyoNo,                  // 5: 伝票番号
         24,                             // 6: 伝票区分
-        2,                              // 7: 取引区分
+        data.torihikiKubun || 2,        // 7: 取引区分（1:掛売, 2:現金, 3:都度請求, 4:サンプル）
         5,                              // 8: 税転嫁
         1,                              // 9: 金額端数処理
         1,                              // 10: 税端数処理
@@ -221,4 +225,29 @@ export function downloadAsShiftJIS(content, filename) {
 export function getDateString() {
     const today = new Date();
     return formatDate(today);
+}
+
+/**
+ * 顧客情報から納入先コードを決定
+ * @param {Object} customer - 顧客情報 {code, torihikiKubun, ...}
+ * @returns {string} 納入先コード
+ */
+export function determineNounyuCode(customer) {
+    if (!customer) return '003';
+
+    const customerCode = customer.code;
+
+    // 顧客コードによる固定値
+    // 000034: 山善 → 020
+    // 001568: やつは → 030
+    // 001564: 飛竜 → 030
+    if (customerCode === '000034') return '020';
+    if (customerCode === '001568') return '030';
+    if (customerCode === '001564') return '030';
+
+    // 取引区分が3（都度請求）→ 002（先行出荷）
+    if (customer.torihikiKubun === 3) return '002';
+
+    // その他 → 003（デフォルト: 銀行振込）
+    return '003';
 }
