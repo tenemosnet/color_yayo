@@ -297,6 +297,72 @@
             color: #667eea;
             margin-bottom: 15px;
         }
+
+        /* 確認済み注文リスト */
+        .order-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .order-list-table thead {
+            background: #f57c00;
+            color: white;
+        }
+
+        .order-list-table th {
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .order-list-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+
+        .order-list-table tbody tr:hover {
+            background: #fff8e1;
+        }
+
+        .order-list-table tbody tr.selected {
+            background: #fff3e0;
+        }
+
+        .order-list-table input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .order-list-table .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .order-list-table .delete-btn:hover {
+            background: #c82333;
+        }
+
+        .order-count-badge {
+            display: inline-block;
+            background: #f57c00;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -326,48 +392,136 @@
 
             <!-- 山善様タブ -->
             <div id="yamazen-tab" class="tab-content active">
-                <div class="wholesale-section">
-                    <h2>📧 メール本文を貼り付け</h2>
-                    <textarea id="yamazenEmailText" class="email-textarea" placeholder="山善様からのメール本文をここに貼り付けてください...
+                <!-- マスタ読込セクション -->
+                <div class="wholesale-section" style="background: #f5f5f5;">
+                    <h2 style="color: #333;">📂 マスタデータ読込</h2>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        弥生販売からエクスポートしたマスタデータを読み込みます。<br>
+                        <small>※一度読み込むとブラウザに保存されます</small>
+                    </p>
 
-例：
-1234 商品名A 10本
-5678 商品名B 5個"></textarea>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- 顧客マスタ -->
+                        <div style="background: #e3f2fd; padding: 20px; border-radius: 10px;">
+                            <h3 style="color: #1976d2; font-size: 16px; margin-bottom: 10px;">🏢 顧客マスタ（得意先リスト）</h3>
+                            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                                得意先コード・担当者・単価種類を自動取得
+                            </p>
+                            <div id="customerMasterInfo" style="display: none; margin-bottom: 10px; padding: 8px; background: white; border-radius: 5px; font-size: 13px;"></div>
+                            <div class="file-upload-box" id="customerMasterUploadBox" style="border-color: #1976d2; padding: 15px; min-height: auto;">
+                                <div style="font-size: 24px;">📋</div>
+                                <p style="font-size: 12px; margin: 5px 0;">得意先リスト.xlsx</p>
+                                <input type="file" id="customerMasterInput" accept=".csv,.xlsx" style="display: none;">
+                            </div>
+                            <button id="clearCustomerMasterBtn" class="wholesale-btn secondary" style="padding: 5px 10px; font-size: 11px; margin-top: 8px; width: 100%;">
+                                クリア
+                            </button>
+                        </div>
+
+                        <!-- 商品マスタ -->
+                        <div style="background: #e8f5e9; padding: 20px; border-radius: 10px;">
+                            <h3 style="color: #2e7d32; font-size: 16px; margin-bottom: 10px;">📦 商品マスタ（商品リスト）</h3>
+                            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                                税抜売上単価１・２・３を自動取得
+                            </p>
+                            <div id="productMasterInfo" style="display: none; margin-bottom: 10px; padding: 8px; background: white; border-radius: 5px; font-size: 13px;"></div>
+                            <div class="file-upload-box" id="productMasterUploadBox" style="border-color: #2e7d32; padding: 15px; min-height: auto;">
+                                <div style="font-size: 24px;">📦</div>
+                                <p style="font-size: 12px; margin: 5px 0;">商品リスト.xlsx</p>
+                                <input type="file" id="productMasterInput" accept=".csv,.xlsx" style="display: none;">
+                            </div>
+                            <button id="clearProductMasterBtn" class="wholesale-btn secondary" style="padding: 5px 10px; font-size: 11px; margin-top: 8px; width: 100%;">
+                                クリア
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wholesale-section">
+                    <h2>📧 注文ファイルをアップロード</h2>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        注文メール（.eml）または注文書PDF（.pdf）をドラッグ&ドロップまたは選択してください。<br>
+                        <small>対応: 山善様（EML）、やつは様（PDF）</small>
+                    </p>
+                    <div class="file-upload-box" id="yamazenUploadBox" style="border-color: #667eea;">
+                        <div class="upload-icon">📋</div>
+                        <h3 style="color: #667eea;">卸注文ファイル（EML / PDF）</h3>
+                        <p>ドラッグ&ドロップ または クリックして選択</p>
+                        <input type="file" id="yamazenEmlInput" accept=".eml,.pdf" style="display: none;">
+                        <label for="yamazenEmlInput" class="wholesale-btn" style="display: inline-block; margin-top: 10px;">
+                            📂 ファイルを選択
+                        </label>
+                        <div class="file-name" id="yamazenFileName" style="margin-top: 10px; font-weight: 600;"></div>
+                    </div>
                     <div class="button-group">
-                        <button id="yamazenParseBtn" class="wholesale-btn">
-                            🔍 商品データを抽出
-                        </button>
                         <button id="yamazenClearBtn" class="wholesale-btn secondary">
                             クリア
                         </button>
                     </div>
                 </div>
 
+                <!-- 検出された顧客情報（EML読込後に表示） -->
+                <div id="detectedCustomerInfo" style="display: none;"></div>
+
                 <!-- 商品リスト（抽出後に表示） -->
                 <div id="yamazenProductSection" class="wholesale-section" style="display: none;">
-                    <h2>📋 商品リスト（単価を入力）</h2>
+                    <h2>📋 商品リスト</h2>
                     <div id="yamazenProductTable"></div>
                 </div>
 
-                <!-- 変換設定（商品抽出後に表示） -->
+                <!-- 確認ボタン（商品抽出後に表示） -->
                 <div id="yamazenConvertSection" class="wholesale-section" style="display: none;">
-                    <h2>⚙️ 変換設定</h2>
-                    <div class="settings-form">
-                        <div class="form-group">
-                            <label for="yamazenDenpyoNo">伝票番号</label>
-                            <input type="text" id="yamazenDenpyoNo" placeholder="伝票番号を入力">
-                        </div>
+                    <h2>✅ 受注内容確認</h2>
+                    <div class="settings-form" style="grid-template-columns: 1fr 1fr;">
                         <div class="form-group">
                             <label for="yamazenOrderDate">受注日</label>
                             <input type="date" id="yamazenOrderDate">
                         </div>
                         <div class="form-group">
                             <label for="yamazenTantousha">担当者コード</label>
-                            <input type="text" id="yamazenTantousha" value="11">
+                            <input type="text" id="yamazenTantousha" value="0">
                         </div>
                     </div>
-                    <button id="yamazenConvertBtn" class="wholesale-btn" style="width: 100%;">
-                        🚀 弥生販売TXTをダウンロード
+                    <button id="yamazenConfirmBtn" class="wholesale-btn" style="width: 100%; background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                        ✅ 確認して注文リストに追加
+                    </button>
+                </div>
+
+                <!-- 確認済み注文一覧 -->
+                <div id="yamazenOrderListSection" class="wholesale-section" style="display: none; background: #fff8e1;">
+                    <h2 style="color: #f57c00;">📋 確認済み注文一覧</h2>
+                    <p style="color: #666; margin-bottom: 15px; font-size: 14px;">
+                        チェックを入れた注文をまとめてTXTファイルに変換します。
+                    </p>
+
+                    <div id="yamazenOrderList" style="margin-bottom: 20px;">
+                        <!-- 注文リストがここに表示される -->
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button id="yamazenSelectAllBtn" class="wholesale-btn secondary" style="padding: 8px 15px; font-size: 13px;">
+                            ☑ 全選択
+                        </button>
+                        <button id="yamazenDeselectAllBtn" class="wholesale-btn secondary" style="padding: 8px 15px; font-size: 13px;">
+                            ☐ 全解除
+                        </button>
+                        <button id="yamazenClearOrdersBtn" class="wholesale-btn secondary" style="padding: 8px 15px; font-size: 13px; margin-left: auto; background: #dc3545;">
+                            🗑 選択を削除
+                        </button>
+                    </div>
+
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="yamazenDenpyoNo" style="font-size: 16px;">伝票番号（開始番号）</label>
+                            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                                弥生販売の新規入力番号に合わせてください。選択した注文に連番で割り当てられます。
+                            </p>
+                            <input type="text" id="yamazenDenpyoNo" placeholder="例: 0001" style="width: 150px; font-size: 18px; text-align: center;">
+                        </div>
+                    </div>
+
+                    <button id="yamazenBatchConvertBtn" class="wholesale-btn" style="width: 100%; font-size: 18px; padding: 20px;">
+                        🚀 選択した注文をTXT変換
                     </button>
                 </div>
             </div>
@@ -426,6 +580,16 @@
     <!-- encoding.js (Shift-JIS変換用) -->
     <script src="https://cdn.jsdelivr.net/npm/encoding-japanese@2.0.0/encoding.min.js"></script>
 
+    <!-- SheetJS (Excel読み込み用) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- PDF.js (PDF読み込み用) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // PDF.js ワーカーの設定
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
     <!-- タブ切り替えスクリプト -->
     <script>
         // タブ切り替え
@@ -447,7 +611,14 @@
         document.getElementById('yatsuhaOrderDate').value = today;
     </script>
 
-    <!-- メインJavaScript（後で実装） -->
-    <!-- <script type="module" src="js/wholesale/yamazen/main.js"></script> -->
+    <!-- 山善様メインJavaScript -->
+    <script type="module">
+        import { initYamazen } from './js/wholesale/yamazen/main.js';
+
+        // ページ読み込み完了後に初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            initYamazen();
+        });
+    </script>
 </body>
 </html>
