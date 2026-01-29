@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>卸販売→弥生販売 変換ツール ver 4.0</title>
+    <title>卸販売→弥生販売 変換ツール ver 4.1</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
         /* 卸販売ページ専用スタイル */
@@ -368,7 +368,7 @@
 <body>
     <div class="container">
         <div class="wholesale-header">
-            <h1>🏭 卸販売→弥生販売 変換ツール <span class="version">ver 4.0</span></h1>
+            <h1>🏭 卸販売→弥生販売 変換ツール <span class="version">ver 4.1</span></h1>
             <a href="index.html" class="back-link">
                 ← トップに戻る
             </a>
@@ -589,6 +589,9 @@
         // PDF.js ワーカーの設定
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
+
+    <!-- Tesseract.js (FAX PDF OCR用) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <!-- タブ切り替えスクリプト -->
     <script>

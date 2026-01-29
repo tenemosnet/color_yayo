@@ -13,10 +13,12 @@ import {
     getCustomerMasterInfo,
     clearCustomerMaster,
     findCustomerByName,
-    findCustomerByDomain
+    findCustomerByDomain,
+    getCustomerByCode
 } from '../common/customer-master.js';
 import { shippingCodes } from '../../common/config.js';
 import { readPdfFile } from '../yatsuha/pdf-parser.js';
+import { readFaxPdfFile, parsePastedOrderText } from './fax-parser.js';
 
 // グローバル状態
 let currentProducts = [];
@@ -330,23 +332,49 @@ async function handleEmlFile(file) {
 }
 
 /**
- * PDFファイルを処理（やつは様注文書）
+ * PDFファイルを処理（やつは注文書 / FAX注文書を自動判定）
  * @param {File} file
  */
 async function handlePdfFile(file) {
-    showStatus('PDFを解析中...', 'info');
+    showStatus('PDFを解析中...（FAXの場合はOCR処理に数十秒かかります）', 'info');
 
     try {
-        // PDFファイルを解析
-        const pdfData = await readPdfFile(file);
-        console.log('PDF解析結果:', pdfData);
+        // まずFAX PDFとして解析を試みる
+        let pdfData;
+        let isFax = false;
+
+        try {
+            pdfData = await readFaxPdfFile(file);
+            isFax = true;
+            console.log('FAX PDF解析結果:', pdfData);
+        } catch (faxError) {
+            // FAX PDFでなければ、やつはPDFパーサーで解析
+            console.log('FAX PDFではありません、やつはパーサーで解析:', faxError.message);
+            pdfData = await readPdfFile(file);
+            console.log('やつはPDF解析結果:', pdfData);
+        }
 
         // ファイル名を保存・表示
         currentEmlFileName = file.name;
         displayFileName(file.name);
 
-        // 顧客を検出（会社名から）
-        if (pdfData.companyName) {
+        // 顧客を検出
+        if (isFax && pdfData.customerCode) {
+            // FAX PDF: 顧客コードから直接取得
+            detectedCustomer = getCustomerByCode(pdfData.customerCode);
+            if (detectedCustomer) {
+                console.log('顧客検出成功（FAXコード）:', detectedCustomer);
+                displayDetectedCustomer(detectedCustomer);
+            } else {
+                // 顧客マスタにない場合、会社名で検索
+                detectedCustomer = findCustomerByName(pdfData.companyName);
+                if (detectedCustomer) {
+                    console.log('顧客検出成功（FAX会社名）:', detectedCustomer);
+                    displayDetectedCustomer(detectedCustomer);
+                }
+            }
+        } else if (pdfData.companyName) {
+            // やつはPDF: 会社名から検索
             detectedCustomer = findCustomerByName(pdfData.companyName);
             if (detectedCustomer) {
                 console.log('顧客検出成功:', detectedCustomer);
@@ -358,7 +386,7 @@ async function handlePdfFile(file) {
             // 卸販売では顧客特定が必須 - エラーで中断
             console.error('顧客を検出できませんでした - 処理中断');
             showStatus('❌ 顧客を特定できませんでした。顧客マスタにドメイン/会社名が登録されているか確認してください。', 'error');
-            return;  // 処理を中断
+            return;
         }
 
         // 日付を設定
@@ -380,6 +408,12 @@ async function handlePdfFile(file) {
             unitPrice: 0,
             amount: 0
         }));
+
+        if (currentProducts.length === 0 && isFax) {
+            // FAX PDFで商品抽出失敗 → テキスト貼り付けUIを表示
+            showFaxPasteUI(pdfData);
+            return;
+        }
 
         if (currentProducts.length === 0) {
             showStatus('商品データが見つかりませんでした。PDF形式を確認してください。', 'error');
@@ -429,9 +463,8 @@ async function handlePdfFile(file) {
 
         // 商品件数から送料を除外
         const productCount = currentProducts.filter(p => !p.isShipping).length;
-        const statusMsg = detectedCustomer
-            ? `✅ ${productCount}件の商品を抽出しました（${detectedCustomer.name}、送料込み）`
-            : `✅ ${productCount}件の商品を抽出しました`;
+        const vendorLabel = isFax ? `FAX: ${pdfData.companyName}` : detectedCustomer.name;
+        const statusMsg = `✅ ${productCount}件の商品を抽出しました（${vendorLabel}、送料込み）`;
         showStatus(statusMsg, 'success');
 
     } catch (error) {
@@ -545,6 +578,99 @@ function displayFileName(filename) {
 }
 
 /**
+ * FAX PDFで商品抽出失敗時のテキスト貼り付けUI
+ * ユーザーがPDFビューアからテーブルテキストをコピペして商品を登録
+ * @param {Object} pdfData - FAX PDF解析結果（顧客・日付は取得済み）
+ */
+function showFaxPasteUI(pdfData) {
+    showStatus('⚠️ FAX注文書の商品テーブルを自動読取できませんでした。PDFビューアから注文テーブルをコピーして下のテキスト欄に貼り付けてください。', 'error');
+
+    const section = document.getElementById('yamazenProductSection');
+    section.style.display = 'block';
+
+    // 貼り付けUIをセクション先頭に挿入
+    const existingPasteUI = document.getElementById('faxPasteUI');
+    if (existingPasteUI) existingPasteUI.remove();
+
+    const pasteUI = document.createElement('div');
+    pasteUI.id = 'faxPasteUI';
+    pasteUI.style.cssText = 'margin-bottom: 20px; padding: 15px; border: 2px dashed #667eea; border-radius: 8px; background: #f8f9ff;';
+    pasteUI.innerHTML = `
+        <h3 style="margin: 0 0 10px 0; color: #667eea;">📋 注文テーブル貼り付け</h3>
+        <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">
+            PDFビューアで注文テーブル部分を選択・コピーし、下に貼り付けてください。<br>
+            商品コード（4桁）と数量を自動抽出します。
+        </p>
+        <textarea id="faxPasteText" rows="8" style="width: 100%; font-family: monospace; font-size: 13px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"
+            placeholder="例:&#10;1 1369 アグア万能水 650ml 24 ※2ロット&#10;2 1221 ビダウォーターソープ (400ml) 12 ※1ロット"></textarea>
+        <button id="faxPasteBtn" class="wholesale-btn" style="margin-top: 10px; padding: 10px 30px;">
+            貼り付けテキストから商品を読み取る
+        </button>
+    `;
+    section.insertBefore(pasteUI, section.firstChild);
+
+    document.getElementById('faxPasteBtn').addEventListener('click', () => {
+        const text = document.getElementById('faxPasteText').value.trim();
+        if (!text) {
+            showStatus('テキストを貼り付けてください。', 'error');
+            return;
+        }
+
+        const products = parsePastedOrderText(text);
+        if (products.length === 0) {
+            showStatus('商品コード（4桁）が見つかりませんでした。テーブル部分を正しくコピーしてください。', 'error');
+            return;
+        }
+
+        // 貼り付けUIを削除
+        pasteUI.remove();
+
+        // 商品データをセット
+        currentProducts = products.map(p => ({
+            code: p.code,
+            name: '',
+            quantity: p.quantity,
+            unit: p.unit || '',
+            unitPrice: 0,
+            amount: 0
+        }));
+
+        // 商品マスタから単価・商品名を自動設定
+        const priceType = detectedCustomer ? detectedCustomer.priceType : 2;
+        currentProducts = applyPricesFromMaster(currentProducts, priceType);
+
+        // 送料行を追加
+        if (detectedCustomer && detectedCustomer.prefecture) {
+            const shippingCode = shippingCodes[detectedCustomer.prefecture];
+            if (shippingCode) {
+                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType);
+                const shippingPrice = toTaxIncluded(shippingPriceExcludingTax);
+                const shippingName = getProductName(shippingCode) || '送料';
+                currentProducts.push({
+                    code: shippingCode,
+                    name: shippingName,
+                    quantity: 1,
+                    unit: '',
+                    unitPrice: shippingPrice,
+                    amount: shippingPrice,
+                    isShipping: true
+                });
+            }
+        }
+
+        // アップロードボックスに完了マーク
+        const uploadBox = document.getElementById('yamazenUploadBox');
+        if (uploadBox) uploadBox.classList.add('loaded');
+
+        displayProductTable(currentProducts);
+        document.getElementById('yamazenConvertSection').style.display = 'block';
+
+        const productCount = currentProducts.filter(p => !p.isShipping).length;
+        showStatus(`✅ ${productCount}件の商品を読み取りました（FAX: ${pdfData.companyName}、テキスト貼付）`, 'success');
+    });
+}
+
+/**
  * 商品テーブルを表示
  * @param {Array<Object>} products
  */
@@ -583,15 +709,13 @@ function displayProductTable(products) {
         const rowStyle = isShipping ? 'background: #fff3e0;' : '';
         const codeDisplay = isShipping ? `📦 ${product.code}` : product.code;
 
-        // 数量欄：送料は編集可能、それ以外は表示のみ
-        const quantityCell = isShipping
-            ? `<input type="number"
+        // 数量欄：全行を編集可能に
+        const quantityCell = `<input type="number"
                       id="quantity_${index}"
                       value="${product.quantity}"
                       min="1"
                       style="width: 60px; text-align: center; padding: 5px;"
-                      data-index="${index}">`
-            : `${product.quantity}${product.unit || ''}`;
+                      data-index="${index}">`;
 
         tr.innerHTML = `
             <td style="font-family: monospace; ${rowStyle}">${codeDisplay}</td>
@@ -617,12 +741,10 @@ function displayProductTable(products) {
         unitPriceInput.addEventListener('input', () => handleUnitPriceChange(index));
         unitPriceInput.addEventListener('change', () => handleUnitPriceChange(index));
 
-        // 送料の数量入力時のイベント
-        if (isShipping) {
-            const quantityInput = tr.querySelector(`#quantity_${index}`);
-            quantityInput.addEventListener('input', () => handleQuantityChange(index));
-            quantityInput.addEventListener('change', () => handleQuantityChange(index));
-        }
+        // 数量入力時のイベント
+        const quantityInput = tr.querySelector(`#quantity_${index}`);
+        quantityInput.addEventListener('input', () => handleQuantityChange(index));
+        quantityInput.addEventListener('change', () => handleQuantityChange(index));
     });
 
     container.innerHTML = '';
