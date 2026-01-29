@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>卸販売→弥生販売 変換ツール ver 4.1</title>
+    <title>卸販売→弥生販売 変換ツール ver 4.2</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
         /* 卸販売ページ専用スタイル */
@@ -368,7 +368,7 @@
 <body>
     <div class="container">
         <div class="wholesale-header">
-            <h1>🏭 卸販売→弥生販売 変換ツール <span class="version">ver 4.1</span></h1>
+            <h1>🏭 卸販売→弥生販売 変換ツール <span class="version">ver 4.2</span></h1>
             <a href="index.html" class="back-link">
                 ← トップに戻る
             </a>
@@ -435,6 +435,25 @@
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <div class="wholesale-section">
+                    <h2>🔑 OCR設定（FAX注文書用）</h2>
+                    <p style="color: #666; margin-bottom: 10px; font-size: 13px;">
+                        FAX注文書（手書き）の読取精度を向上するため、Google Cloud Vision APIを使用できます。<br>
+                        未設定の場合はTesseract.js（低精度）で動作します。
+                    </p>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="password" id="visionApiKeyInput" placeholder="Google Cloud Vision APIキー"
+                               style="flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+                        <button id="saveVisionApiKeyBtn" class="wholesale-btn" style="padding: 8px 20px; white-space: nowrap;">
+                            保存
+                        </button>
+                        <button id="clearVisionApiKeyBtn" class="wholesale-btn secondary" style="padding: 8px 12px; white-space: nowrap;">
+                            削除
+                        </button>
+                    </div>
+                    <div id="visionApiKeyStatus" style="margin-top: 8px; font-size: 12px; color: #666;"></div>
                 </div>
 
                 <div class="wholesale-section">

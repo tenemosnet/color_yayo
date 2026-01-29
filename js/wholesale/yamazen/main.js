@@ -19,6 +19,7 @@ import {
 import { shippingCodes } from '../../common/config.js';
 import { readPdfFile } from '../yatsuha/pdf-parser.js';
 import { readFaxPdfFile, parsePastedOrderText } from './fax-parser.js';
+import { saveVisionApiKey, getVisionApiKey, hasVisionApiKey, clearVisionApiKey } from '../common/vision-api.js';
 
 // グローバル状態
 let currentProducts = [];
@@ -147,6 +148,55 @@ function setupEventListeners() {
 
     // 顧客マスタクリアボタン
     document.getElementById('clearCustomerMasterBtn')?.addEventListener('click', handleClearCustomerMaster);
+
+    // Vision APIキー設定
+    initVisionApiKeyUI();
+}
+
+/**
+ * Vision APIキー設定UIの初期化
+ */
+function initVisionApiKeyUI() {
+    const input = document.getElementById('visionApiKeyInput');
+    const saveBtn = document.getElementById('saveVisionApiKeyBtn');
+    const clearBtn = document.getElementById('clearVisionApiKeyBtn');
+    const status = document.getElementById('visionApiKeyStatus');
+
+    if (!saveBtn) return;
+
+    // 現在の状態を表示
+    updateVisionApiKeyStatus();
+
+    saveBtn.addEventListener('click', () => {
+        const key = input.value.trim();
+        if (!key) {
+            status.textContent = '⚠️ APIキーを入力してください';
+            status.style.color = '#e53935';
+            return;
+        }
+        saveVisionApiKey(key);
+        input.value = '';
+        updateVisionApiKeyStatus();
+    });
+
+    clearBtn.addEventListener('click', () => {
+        clearVisionApiKey();
+        input.value = '';
+        updateVisionApiKeyStatus();
+    });
+}
+
+function updateVisionApiKeyStatus() {
+    const status = document.getElementById('visionApiKeyStatus');
+    if (!status) return;
+
+    if (hasVisionApiKey()) {
+        status.textContent = '✅ APIキー設定済み（Google Cloud Vision APIを使用）';
+        status.style.color = '#2e7d32';
+    } else {
+        status.textContent = '未設定（Tesseract.jsで動作）';
+        status.style.color = '#666';
+    }
 }
 
 /**
@@ -690,12 +740,13 @@ function displayProductTable(products) {
                 <th style="width: 80px; text-align: center;">数量</th>
                 <th style="width: 120px; text-align: right;">単価</th>
                 <th style="width: 120px; text-align: right;">金額</th>
+                <th style="width: 40px;"></th>
             </tr>
         </thead>
         <tbody></tbody>
         <tfoot>
             <tr class="total-row">
-                <td colspan="4" style="text-align: right;">合計</td>
+                <td colspan="5" style="text-align: right;">合計</td>
                 <td id="yamazenTotalAmount" style="text-align: right;">¥0</td>
             </tr>
         </tfoot>
@@ -733,6 +784,10 @@ function displayProductTable(products) {
             <td id="amount_${index}" style="text-align: right; font-weight: 600; ${rowStyle}">
                 ${product.amount > 0 ? '¥' + product.amount.toLocaleString() : '-'}
             </td>
+            <td style="text-align: center; ${rowStyle}">
+                <button class="delete-row-btn" data-index="${index}" title="削除"
+                        style="background: none; border: none; cursor: pointer; font-size: 16px; color: #e53935; padding: 2px 6px;">✕</button>
+            </td>
         `;
         tbody.appendChild(tr);
 
@@ -745,6 +800,12 @@ function displayProductTable(products) {
         const quantityInput = tr.querySelector(`#quantity_${index}`);
         quantityInput.addEventListener('input', () => handleQuantityChange(index));
         quantityInput.addEventListener('change', () => handleQuantityChange(index));
+
+        // 削除ボタン
+        tr.querySelector('.delete-row-btn').addEventListener('click', () => {
+            currentProducts.splice(index, 1);
+            displayProductTable(currentProducts);
+        });
     });
 
     container.innerHTML = '';

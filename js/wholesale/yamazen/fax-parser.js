@@ -5,6 +5,7 @@
  */
 
 import { loadProductMaster } from '../common/product-master.js';
+import { hasVisionApiKey, ocrWithVisionApi } from '../common/vision-api.js';
 
 // 業者別顧客コード
 const FAX_CUSTOMERS = {
@@ -76,13 +77,13 @@ export async function readFaxPdfFile(file) {
 
 /**
  * PDFの全ページをOCRで文字認識
+ * Google Cloud Vision API優先、未設定/失敗時はTesseract.jsフォールバック
  * @param {Object} pdf - PDF.jsのドキュメントオブジェクト
  * @returns {Promise<string>} OCR結果テキスト
  */
 async function ocrPdfPages(pdf) {
-    if (typeof Tesseract === 'undefined') {
-        throw new Error('Tesseract.js が読み込まれていません。OCRが必要です。');
-    }
+    const useVisionApi = hasVisionApiKey();
+    console.log(`OCRエンジン: ${useVisionApi ? 'Google Cloud Vision API' : 'Tesseract.js'}`);
 
     let fullText = '';
 
@@ -90,7 +91,7 @@ async function ocrPdfPages(pdf) {
         console.log(`OCR処理中: ページ ${i}/${pdf.numPages}`);
 
         const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 3.0 });  // 高解像度でレンダリング
+        const viewport = page.getViewport({ scale: 3.0 });
 
         // Canvasにレンダリング
         const canvas = document.createElement('canvas');
@@ -103,35 +104,60 @@ async function ocrPdfPages(pdf) {
             viewport: viewport
         }).promise;
 
-        // 画像前処理: グレースケール化＋二値化でOCR精度向上
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        const threshold = 140;
-        for (let p = 0; p < data.length; p += 4) {
-            const gray = data[p] * 0.299 + data[p + 1] * 0.587 + data[p + 2] * 0.114;
-            const val = gray < threshold ? 0 : 255;
-            data[p] = data[p + 1] = data[p + 2] = val;
-        }
-        ctx.putImageData(imageData, 0, 0);
-
-        // CanvasをBlobに変換
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-
-        // Tesseract.jsでOCR実行（日本語 + 英語）
-        const result = await Tesseract.recognize(blob, 'jpn+eng', {
-            logger: m => {
-                if (m.status === 'recognizing text') {
-                    const pct = Math.round(m.progress * 100);
-                    console.log(`OCR進捗: ${pct}%`);
-                }
+        // Vision API → Tesseractフォールバック
+        let pageText = '';
+        if (useVisionApi) {
+            try {
+                pageText = await ocrWithVisionApi(canvas);
+                console.log(`ページ${i} Vision API完了: ${pageText.length}文字`);
+            } catch (e) {
+                console.warn(`Vision APIエラー、Tesseractにフォールバック:`, e.message);
+                pageText = await ocrWithTesseract(canvas, ctx);
             }
-        });
+        } else {
+            pageText = await ocrWithTesseract(canvas, ctx);
+        }
 
-        fullText += result.data.text + '\n';
-        console.log(`ページ${i} OCR完了: ${result.data.text.length}文字`);
+        fullText += pageText + '\n';
     }
 
     return fullText;
+}
+
+/**
+ * Tesseract.jsでOCR実行
+ * @param {HTMLCanvasElement} canvas
+ * @param {CanvasRenderingContext2D} ctx
+ * @returns {Promise<string>}
+ */
+async function ocrWithTesseract(canvas, ctx) {
+    if (typeof Tesseract === 'undefined') {
+        throw new Error('Tesseract.js が読み込まれていません。OCRが必要です。');
+    }
+
+    // 画像前処理: グレースケール化＋二値化
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    const threshold = 140;
+    for (let p = 0; p < data.length; p += 4) {
+        const gray = data[p] * 0.299 + data[p + 1] * 0.587 + data[p + 2] * 0.114;
+        const val = gray < threshold ? 0 : 255;
+        data[p] = data[p + 1] = data[p + 2] = val;
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+    const result = await Tesseract.recognize(blob, 'jpn+eng', {
+        logger: m => {
+            if (m.status === 'recognizing text') {
+                console.log(`OCR進捗: ${Math.round(m.progress * 100)}%`);
+            }
+        }
+    });
+
+    console.log(`Tesseract OCR完了: ${result.data.text.length}文字`);
+    return result.data.text;
 }
 
 /**
@@ -218,42 +244,70 @@ function parseOptimalLifePdf(text) {
 
     // 年号を除外リストに
     const excludeCodes = new Set(['2025', '2026', '2027', '2028', '2029', '2030']);
-
-    // 方法1: 行単位で商品コード＋数量を抽出
     const lines = text.split(/\n/);
 
-    for (const line of lines) {
-        // 4桁の商品コードを含む行を探す
-        const codeMatch = line.match(/\b(\d{4})\b/);
+    // 方法1: Vision API形式（各フィールドが改行区切り）
+    // パターン: 番号行 → コード行 → 品名行 → 数量行 → 備考行
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        // 4桁コードだけの行（または先頭が4桁コード）を探す
+        const codeMatch = line.match(/^([12]\d{3})$/);
         if (!codeMatch) continue;
 
         const code = codeMatch[1];
-        const codeNum = parseInt(code, 10);
-        if (codeNum < 1000 || codeNum > 2999) continue;
         if (excludeCodes.has(code)) continue;
         if (result.products.find(p => p.code === code)) continue;
 
-        // コードの後の数字列から数量を特定
-        const afterCode = line.substring(line.indexOf(code) + code.length);
-        const numbersInLine = afterCode.match(/\b(\d{1,3})\b/g);
-
-        if (numbersInLine) {
-            for (const numStr of numbersInLine) {
-                const num = parseInt(numStr, 10);
+        // コード行の後の数行から数量を探す（品名を飛ばして）
+        let quantity = null;
+        for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
+            const nextLine = lines[j].trim();
+            // 次の商品コード行に到達したら中断
+            if (/^[12]\d{3}$/.test(nextLine)) break;
+            // 数量候補: 1〜3桁の数字だけの行
+            const qtyMatch = nextLine.match(/^(\d{1,3})$/);
+            if (qtyMatch) {
+                const num = parseInt(qtyMatch[1], 10);
                 if (num >= 1 && num <= 999) {
-                    result.products.push({
-                        code: code,
-                        quantity: num,
-                        unit: ''
-                    });
-                    console.log(`オプティマル商品検出（コード）: コード=${code}, 数量=${num}`);
+                    quantity = num;
                     break;
+                }
+            }
+        }
+
+        if (quantity) {
+            result.products.push({ code, quantity, unit: '' });
+            console.log(`オプティマル商品検出（行解析）: コード=${code}, 数量=${quantity}`);
+        }
+    }
+
+    // 方法2: コードと数量が同一行にある場合（Tesseract等）
+    if (result.products.length === 0) {
+        for (const line of lines) {
+            const codeMatch = line.match(/\b([12]\d{3})\b/);
+            if (!codeMatch) continue;
+
+            const code = codeMatch[1];
+            if (excludeCodes.has(code)) continue;
+            if (result.products.find(p => p.code === code)) continue;
+
+            const afterCode = line.substring(line.indexOf(code) + code.length);
+            const numbersInLine = afterCode.match(/\b(\d{1,3})\b/g);
+            if (numbersInLine) {
+                for (const numStr of numbersInLine) {
+                    const num = parseInt(numStr, 10);
+                    if (num >= 1 && num <= 999) {
+                        result.products.push({ code, quantity: num, unit: '' });
+                        console.log(`オプティマル商品検出（同一行）: コード=${code}, 数量=${num}`);
+                        break;
+                    }
                 }
             }
         }
     }
 
-    // 方法2: コード抽出が不十分な場合、商品マスタの名前でマッチング
+    // 方法3: 商品名マッチング（フォールバック）
     if (result.products.length === 0) {
         console.log('コードベース抽出失敗。商品名マッチングを試行...');
         const nameMatched = matchProductsByName(text);
