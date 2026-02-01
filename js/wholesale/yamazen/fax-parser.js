@@ -45,10 +45,17 @@ export async function readFaxPdfFile(file) {
     console.log('テキスト抽出結果:', trimmedText.length, '文字');
 
     // テキストが空または極めて少ない場合、OCRを使用
+    let annotations = null;
+    let canvases = [];
     if (trimmedText.length < 50) {
         console.log('テキスト抽出不十分、OCRを実行します...');
-        fullText = await ocrPdfPages(pdf);
+        // 座標情報付きでOCR（飛竜の手書き数量検出用）
+        const ocrResult = await ocrPdfPages(pdf, { withAnnotations: true });
+        fullText = ocrResult.text;
+        annotations = ocrResult.annotations;
+        canvases = ocrResult.canvases || [];
         console.log('OCRテキスト（先頭500文字）:', fullText.substring(0, 500));
+        console.log('アノテーション数:', annotations.length);
     } else {
         console.log('抽出テキスト（先頭500文字）:', fullText.substring(0, 500));
     }
@@ -66,7 +73,7 @@ export async function readFaxPdfFile(file) {
     if (vendor === 'OPTIMAL') {
         result = parseOptimalLifePdf(fullText);
     } else if (vendor === 'HIRYU') {
-        result = parseHiryuPdf(fullText);
+        result = await parseHiryuPdf(fullText, annotations, canvases);
     }
 
     result.fileName = file.name;
@@ -79,13 +86,17 @@ export async function readFaxPdfFile(file) {
  * PDFの全ページをOCRで文字認識
  * Google Cloud Vision API優先、未設定/失敗時はTesseract.jsフォールバック
  * @param {Object} pdf - PDF.jsのドキュメントオブジェクト
- * @returns {Promise<string>} OCR結果テキスト
+ * @param {Object} options - オプション
+ * @param {boolean} options.withAnnotations - 座標情報付きアノテーションも返す
+ * @returns {Promise<string|Object>} テキスト、またはwithAnnotations時は {text, annotations}
  */
-async function ocrPdfPages(pdf) {
+async function ocrPdfPages(pdf, options = {}) {
     const useVisionApi = hasVisionApiKey();
     console.log(`OCRエンジン: ${useVisionApi ? 'Google Cloud Vision API' : 'Tesseract.js'}`);
 
     let fullText = '';
+    let allAnnotations = [];
+    let canvases = [];
 
     for (let i = 1; i <= pdf.numPages; i++) {
         console.log(`OCR処理中: ページ ${i}/${pdf.numPages}`);
@@ -108,7 +119,13 @@ async function ocrPdfPages(pdf) {
         let pageText = '';
         if (useVisionApi) {
             try {
-                pageText = await ocrWithVisionApi(canvas);
+                if (options.withAnnotations) {
+                    const result = await ocrWithVisionApi(canvas, { withAnnotations: true });
+                    pageText = result.text;
+                    allAnnotations = allAnnotations.concat(result.annotations);
+                } else {
+                    pageText = await ocrWithVisionApi(canvas);
+                }
                 console.log(`ページ${i} Vision API完了: ${pageText.length}文字`);
             } catch (e) {
                 console.warn(`Vision APIエラー、Tesseractにフォールバック:`, e.message);
@@ -119,8 +136,14 @@ async function ocrPdfPages(pdf) {
         }
 
         fullText += pageText + '\n';
+        if (options.withAnnotations) {
+            canvases.push(canvas);
+        }
     }
 
+    if (options.withAnnotations) {
+        return { text: fullText, annotations: allAnnotations, canvases };
+    }
     return fullText;
 }
 
@@ -416,10 +439,14 @@ function findQuantityNearName(text, productName) {
 
 /**
  * 飛竜社のFAX注文書（商品卸価格表）を解析
+ * 座標情報付きアノテーションを使用して「注文数」列を特定し、
+ * 手書き注文数量のみを正確に抽出する
  * @param {string} text - PDFテキスト（OCR結果含む）
+ * @param {Array|null} annotations - Vision APIアノテーション（座標付き単語リスト）
+ * @param {Array} canvases - レンダリング済みCanvasの配列（列クロップ再OCR用）
  * @returns {Object} {customerCode, products, date, companyName}
  */
-function parseHiryuPdf(text) {
+async function parseHiryuPdf(text, annotations, canvases = []) {
     const result = {
         customerCode: FAX_CUSTOMERS.HIRYU,
         companyName: '株式会社飛竜',
@@ -428,8 +455,7 @@ function parseHiryuPdf(text) {
     };
 
     // 日付を抽出
-    // FAXヘッダー形式: "26-01-26;09:42" または "26-01-26 09:42"
-    const faxDateMatch = text.match(/(\d{2})[\-\/](\d{2})[\-\/](\d{2})[;\s]\s*\d{2}:\d{2}/);
+    const faxDateMatch = text.match(/(\d{2})[\-\/](\d{2})[\-\/](\d{2})[;:\s]\s*\d{2}:\d{2}/);
     if (faxDateMatch) {
         const year = '20' + faxDateMatch[1];
         const month = faxDateMatch[2];
@@ -438,17 +464,346 @@ function parseHiryuPdf(text) {
         console.log('飛竜日付抽出（FAXヘッダー）:', result.date);
     }
 
-    // 飛竜の価格表は各行に商品情報が並ぶ
-    // OCR結果は行単位で解析する
+    console.log('飛竜OCRテキスト全文:', text);
+
+    // 座標ベースの解析（Vision APIアノテーションがある場合）
+    if (annotations && annotations.length > 0) {
+        console.log('飛竜: 座標ベース解析開始、アノテーション数:', annotations.length);
+        const coordProducts = await parseHiryuByCoordinates(annotations, canvases);
+        if (coordProducts.length > 0) {
+            result.products = coordProducts;
+            return result;
+        }
+        console.log('飛竜: 座標ベース解析で商品0件、テキストベースにフォールバック');
+    }
+
+    // フォールバック: テキストベース解析（座標なし時）
+    result.products = parseHiryuByText(text);
+
+    if (result.products.length === 0) {
+        console.log('飛竜: 商品抽出0件');
+    }
+
+    return result;
+}
+
+/**
+ * 座標ベースで飛竜注文書を解析（2列×y座標マッチング方式）
+ *
+ * 飛竜価格表の列構造:
+ *   コード | 商品名 | 小売価格(税抜) | 小売価格(税込) | 卸価格(税込) | 卸単位 | 掛率 | 摘要 | 注文数
+ *
+ * 戦略: Vision APIの1回のOCR結果から、「コード」列と「注文数」列のx帯を特定し、
+ * 各列内のアノテーションだけを抽出。同じy座標（同一行）の商品コードと注文数をペアリングする。
+ * これにより価格・掛率など他列のテキストに惑わされない。
+ *
+ * @param {Array} annotations - Vision API textAnnotations（フルページ）
+ * @param {Array} canvases - レンダリング済みCanvasの配列（互換性のため残すが未使用）
+ * @returns {Promise<Array<Object>>} [{code, quantity, unit}]
+ */
+async function parseHiryuByCoordinates(annotations, canvases) {
+    const products = [];
+    const excludeCodes = new Set(['2025', '2026', '2027', '2028', '2029', '2030']);
+
+    // 座標ヘルパー
+    const getXLeft = (ann) => {
+        const v = ann.boundingPoly?.vertices;
+        if (!v || v.length < 1) return null;
+        return v[0].x;
+    };
+    const getXRight = (ann) => {
+        const v = ann.boundingPoly?.vertices;
+        if (!v || v.length < 2) return null;
+        return v[1].x;
+    };
+    const getXCenter = (ann) => {
+        const v = ann.boundingPoly?.vertices;
+        if (!v || v.length < 2) return null;
+        return (v[0].x + v[1].x) / 2;
+    };
+    const getYCenter = (ann) => {
+        const v = ann.boundingPoly?.vertices;
+        if (!v || v.length < 4) return null;
+        return (v[0].y + v[2].y) / 2;
+    };
+    const getHeight = (ann) => {
+        const v = ann.boundingPoly?.vertices;
+        if (!v || v.length < 4) return null;
+        return Math.abs(v[2].y - v[0].y);
+    };
+
+    // --- Step 1: 列ヘッダーからx帯を検出 ---
+
+    // 「コード」ヘッダーのx範囲
+    let codeColXLeft = null, codeColXRight = null;
+    // 「注文数」ヘッダーのx範囲
+    let orderColXLeft = null, orderColXRight = null;
+
+    for (const ann of annotations) {
+        const desc = ann.description.replace(/\s/g, '');
+
+        // 「コード」ヘッダー検出
+        if (desc === 'コード' && codeColXLeft === null) {
+            codeColXLeft = getXLeft(ann);
+            codeColXRight = getXRight(ann);
+            console.log(`飛竜座標: 「コード」ヘッダー x=${codeColXLeft}〜${codeColXRight}`);
+        }
+
+        // 「注文数」ヘッダー検出（1単語で取れる場合）
+        if ((desc === '注文数' || desc.includes('注文数')) && orderColXLeft === null) {
+            orderColXLeft = getXLeft(ann);
+            orderColXRight = getXRight(ann);
+            console.log(`飛竜座標: 「注文数」ヘッダー x=${orderColXLeft}〜${orderColXRight}`);
+        }
+    }
+
+    // 「注文」と「数」が分離して認識された場合
+    if (orderColXLeft === null) {
+        let orderAnn = null, suuAnn = null;
+        for (const ann of annotations) {
+            const desc = ann.description.replace(/\s/g, '');
+            if (desc === '注文') orderAnn = ann;
+            if (desc === '数' && orderAnn) {
+                suuAnn = ann;
+                break;
+            }
+        }
+        if (orderAnn && suuAnn) {
+            orderColXLeft = getXLeft(orderAnn);
+            orderColXRight = getXRight(suuAnn);
+            console.log(`飛竜座標: 「注文」+「数」ヘッダー x=${orderColXLeft}〜${orderColXRight}`);
+        }
+    }
+
+    // --- Step 1b: フォールバック ---
+
+    // コード列: ヘッダーが見つからない場合、最初の4桁コードのx位置から推定
+    if (codeColXLeft === null) {
+        for (const ann of annotations) {
+            const desc = ann.description.trim();
+            if (/^[12]\d{3}$/.test(desc) && !excludeCodes.has(desc)) {
+                codeColXLeft = getXLeft(ann);
+                codeColXRight = getXRight(ann);
+                console.log(`飛竜座標: コード列フォールバック（最初のコード${desc}）x=${codeColXLeft}〜${codeColXRight}`);
+                break;
+            }
+        }
+    }
+
+    // 注文数列: ヘッダーが見つからない場合、ページ右端付近を推定
+    if (orderColXLeft === null) {
+        let pageMaxX = 0;
+        for (const ann of annotations) {
+            const xr = getXRight(ann);
+            if (xr !== null && xr > pageMaxX) pageMaxX = xr;
+        }
+        orderColXLeft = pageMaxX * 0.85;
+        orderColXRight = pageMaxX;
+        console.log(`飛竜座標: 注文数列フォールバック（ページ右端85%〜100%）x=${Math.round(orderColXLeft)}〜${pageMaxX}`);
+    }
+
+    if (codeColXLeft === null) {
+        console.log('飛竜座標: コード列を特定できず、座標ベース解析中断');
+        return products;
+    }
+
+    // ページ右端を算出
+    let pageMaxX = 0;
+    for (const ann of annotations) {
+        const xr = getXRight(ann);
+        if (xr !== null && xr > pageMaxX) pageMaxX = xr;
+    }
+
+    // コード列: ヘッダー幅の50%マージン
+    const codeColWidth = codeColXRight - codeColXLeft;
+    const codeXMin = codeColXLeft - codeColWidth * 0.5;
+    const codeXMax = codeColXRight + codeColWidth * 0.5;
+
+    // 注文数列: 最右列のため、ヘッダー左端からページ右端まで全域をカバー
+    const orderXMin = orderColXLeft - 30;
+    const orderXMax = pageMaxX;
+
+    console.log(`飛竜座標: コード列x帯=${Math.round(codeXMin)}〜${Math.round(codeXMax)}, 注文数列x帯=${Math.round(orderXMin)}〜${Math.round(orderXMax)}`);
+
+    // --- Step 2: コード列内の商品コードを収集 ---
+    const codeAnnotations = [];
+    for (const ann of annotations) {
+        const desc = ann.description.trim();
+        if (!/^[12]\d{3}$/.test(desc)) continue;
+        if (excludeCodes.has(desc)) continue;
+
+        const xc = getXCenter(ann);
+        const yc = getYCenter(ann);
+        if (xc === null || yc === null) continue;
+
+        // コード列のx帯内にあるか
+        if (xc >= codeXMin && xc <= codeXMax) {
+            codeAnnotations.push({ code: desc, y: yc });
+        }
+    }
+    codeAnnotations.sort((a, b) => a.y - b.y);
+    console.log(`飛竜座標: コード列内の商品コード${codeAnnotations.length}件:`, codeAnnotations.map(c => `${c.code}(y=${Math.round(c.y)})`));
+
+    // --- Step 3: 注文数列内の数字を収集（全ページOCRから） ---
+    let orderAnnotations = [];
+    const debugAllNumbers = []; // デバッグ: 全数字のx,y座標
+    for (const ann of annotations) {
+        const desc = ann.description.trim().replace(/[,，]/g, '');
+        if (!/^\d+$/.test(desc)) continue;
+        const num = parseInt(desc, 10);
+        if (num < 1 || num > 999) continue;
+
+        const xc = getXCenter(ann);
+        const yc = getYCenter(ann);
+        if (xc === null || yc === null) continue;
+
+        debugAllNumbers.push({ value: num, x: Math.round(xc), y: Math.round(yc) });
+
+        // 注文数列のx帯内にあるか
+        if (xc >= orderXMin && xc <= orderXMax) {
+            orderAnnotations.push({ value: num, y: yc });
+        }
+    }
+    console.log(`飛竜座標: 全数字アノテーション(1〜999):`, debugAllNumbers.map(n => `${n.value}(x=${n.x},y=${n.y})`));
+    console.log(`飛竜座標: 注文数列内の数字${orderAnnotations.length}件:`, orderAnnotations.map(n => `${n.value}(y=${Math.round(n.y)})`));
+
+    // --- Step 3b: 注文数列に商品行と対応する数字がない場合、クロップ再OCRで手書き数字を検出 ---
+    // 商品コードのy範囲内にある注文数をカウント（ヘッダー/フッターの数字を除外）
+    const codeYMin = codeAnnotations.length > 0 ? codeAnnotations[0].y - 50 : 0;
+    const codeYMax = codeAnnotations.length > 0 ? codeAnnotations[codeAnnotations.length - 1].y + 50 : 0;
+    const relevantOrderCount = orderAnnotations.filter(n => n.y >= codeYMin && n.y <= codeYMax).length;
+    console.log(`飛竜座標: 商品行y範囲(${Math.round(codeYMin)}〜${Math.round(codeYMax)})内の注文数: ${relevantOrderCount}件`);
+
+    if (relevantOrderCount === 0 && canvases && canvases.length > 0 && hasVisionApiKey()) {
+        console.log('飛竜座標: 注文数列に商品行対応の数字なし。手書き数字検出のためクロップ再OCRを実行...');
+
+        const canvas = canvases[0];
+        // クロップ範囲: 注文数列ヘッダーの左端 - 余裕 〜 ページ右端
+        const cropStartX = Math.max(0, orderColXLeft - 50);
+        const cropWidth = canvas.width - cropStartX;
+
+        if (cropWidth > 0) {
+            // 手書き文字の認識精度を上げるため、クロップ画像を拡大+コントラスト強調
+            const upscale = 3; // 3倍拡大
+            const cropCanvas = document.createElement('canvas');
+            cropCanvas.width = cropWidth * upscale;
+            cropCanvas.height = canvas.height * upscale;
+            const cropCtx = cropCanvas.getContext('2d');
+
+            // 拡大描画（imageSmoothingを無効にしてシャープに）
+            cropCtx.imageSmoothingEnabled = false;
+            cropCtx.drawImage(canvas, cropStartX, 0, cropWidth, canvas.height, 0, 0, cropCanvas.width, cropCanvas.height);
+
+            // コントラスト強調: グレースケール化 + 二値化（手書き文字を濃くする）
+            const imageData = cropCtx.getImageData(0, 0, cropCanvas.width, cropCanvas.height);
+            const data = imageData.data;
+            const threshold = 180; // やや高めの閾値で薄い手書きも拾う
+            for (let p = 0; p < data.length; p += 4) {
+                const gray = data[p] * 0.299 + data[p + 1] * 0.587 + data[p + 2] * 0.114;
+                const val = gray < threshold ? 0 : 255;
+                data[p] = data[p + 1] = data[p + 2] = val;
+            }
+            cropCtx.putImageData(imageData, 0, 0);
+
+            console.log(`飛竜座標: クロップ再OCR実行 (x=${cropStartX}〜${canvas.width}, 元${cropWidth}x${canvas.height}px → ${upscale}倍拡大${cropCanvas.width}x${cropCanvas.height}px)`);
+
+            try {
+                const cropResult = await ocrWithVisionApi(cropCanvas, { withAnnotations: true });
+                console.log(`飛竜座標: クロップOCR完了: ${cropResult.text.length}文字, アノテーション${cropResult.annotations.length}件`);
+                console.log('飛竜座標: クロップOCRテキスト:', cropResult.text);
+
+                // クロップ内の数字アノテーションを収集
+                // y座標は拡大倍率で割ってフルページ座標に戻す
+                orderAnnotations = [];
+                for (const ann of cropResult.annotations) {
+                    const desc = ann.description.trim().replace(/[,，]/g, '');
+                    if (!/^\d+$/.test(desc)) continue;
+                    const num = parseInt(desc, 10);
+                    if (num < 1 || num > 999) continue;
+                    const yc = getYCenter(ann);
+                    if (yc !== null) {
+                        orderAnnotations.push({ value: num, y: yc / upscale });
+                    }
+                }
+                orderAnnotations.sort((a, b) => a.y - b.y);
+                console.log(`飛竜座標: クロップ内数字${orderAnnotations.length}件:`, orderAnnotations.map(n => `${n.value}(y=${Math.round(n.y)})`));
+            } catch (e) {
+                console.warn('飛竜座標: クロップOCRエラー:', e.message);
+            }
+        }
+    }
+
+    // --- Step 4: y座標マッチング ---
+    // 行高さの推定（商品コードのフォントサイズから）
+    let rowTolerance = 30; // デフォルト
+    if (codeAnnotations.length >= 2) {
+        // 隣接コード間のy差の中央値を行高さとし、その半分を閾値にする
+        const yGaps = [];
+        for (let i = 1; i < codeAnnotations.length; i++) {
+            yGaps.push(codeAnnotations[i].y - codeAnnotations[i - 1].y);
+        }
+        yGaps.sort((a, b) => a - b);
+        const medianGap = yGaps[Math.floor(yGaps.length / 2)];
+        rowTolerance = medianGap * 0.5;
+        console.log(`飛竜座標: 行間隔中央値=${Math.round(medianGap)}, y閾値=${Math.round(rowTolerance)}`);
+    }
+
+    // 掛率値を除外（印刷された掛率が紛れ込む可能性対策）
+    const rateValues = new Set([55, 60, 70, 80, 90]);
+
+    const processedCodes = new Set();
+    const usedOrders = new Set(); // 同じ注文数を二重に使わない
+
+    for (const codeAnn of codeAnnotations) {
+        if (processedCodes.has(codeAnn.code)) continue;
+
+        // y座標が閾値以内の注文数候補を全て取得
+        const candidates = [];
+        for (let i = 0; i < orderAnnotations.length; i++) {
+            if (usedOrders.has(i)) continue;
+            const dist = Math.abs(orderAnnotations[i].y - codeAnn.y);
+            if (dist <= rowTolerance) {
+                candidates.push({ index: i, value: orderAnnotations[i].value, dist });
+            }
+        }
+
+        if (candidates.length === 0) {
+            console.log(`飛竜座標: コード${codeAnn.code}(y=${Math.round(codeAnn.y)})に対応する注文数なし`);
+            continue;
+        }
+
+        // 掛率値でない候補を優先
+        const nonRateCandidates = candidates.filter(c => !rateValues.has(c.value));
+        const chosen = nonRateCandidates.length > 0
+            ? nonRateCandidates.sort((a, b) => a.dist - b.dist)[0]
+            : candidates.sort((a, b) => a.dist - b.dist)[0];
+
+        products.push({ code: codeAnn.code, quantity: chosen.value, unit: '' });
+        processedCodes.add(codeAnn.code);
+        usedOrders.add(chosen.index);
+        console.log(`飛竜注文検出（座標マッチ）: コード=${codeAnn.code}, 数量=${chosen.value}, y差=${Math.round(chosen.dist)}, 候補=${JSON.stringify(candidates.map(c => c.value))}`);
+    }
+
+    console.log(`飛竜座標: マッチング結果 ${products.length}件`);
+    return products;
+}
+
+/**
+ * テキストベースで飛竜注文書を解析（フォールバック）
+ * @param {string} text
+ * @returns {Array<Object>}
+ */
+function parseHiryuByText(text) {
+    const products = [];
     const lines = text.split(/\n/);
     const processedCodes = new Set();
     const excludeCodes = new Set(['2025', '2026', '2027', '2028', '2029', '2030']);
+    const unitCandidates = new Set([60, 70, 80, 90]);
 
-    for (const line of lines) {
-        // カテゴリヘッダー（●で始まる）をスキップ
-        if (line.includes('●')) continue;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
 
-        // 4桁の商品コードを探す
         const codeMatch = line.match(/\b([12]\d{3})\b/);
         if (!codeMatch) continue;
 
@@ -456,70 +811,44 @@ function parseHiryuPdf(text) {
         if (excludeCodes.has(code)) continue;
         if (processedCodes.has(code)) continue;
 
-        // 行内の全数字を抽出
-        const allNumbers = line.match(/[\d,]+/g);
-        if (!allNumbers) continue;
+        const allNumbers = [];
+        for (let j = i; j < Math.min(i + 15, lines.length); j++) {
+            const scanLine = lines[j].trim();
+            if (!scanLine) continue;
+            if (j > i) {
+                const nextCode = scanLine.match(/\b([12]\d{3})\b/);
+                if (nextCode && nextCode[1] !== code) break;
+            }
+            const nums = scanLine.match(/[\d,]+/g);
+            if (nums) {
+                for (const n of nums) {
+                    const parsed = parseInt(n.replace(/,/g, ''), 10);
+                    if (!isNaN(parsed)) allNumbers.push(parsed);
+                }
+            }
+        }
 
-        // カンマ除去してパース
-        const parsedNumbers = allNumbers.map(n => parseInt(n.replace(/,/g, ''), 10)).filter(n => !isNaN(n));
+        const codeNum = parseInt(code, 10);
+        const codeIdx = allNumbers.indexOf(codeNum);
+        const numbersAfterCode = codeIdx >= 0 ? allNumbers.slice(codeIdx + 1) : allNumbers;
 
-        // コード自体を除外
-        const codeIndex = parsedNumbers.indexOf(parseInt(code, 10));
-        const numbersAfterCode = codeIndex >= 0 ? parsedNumbers.slice(codeIndex + 1) : parsedNumbers;
-
-        if (numbersAfterCode.length < 4) continue;
-
-        console.log(`飛竜解析中: コード=${code}, 数字列=${JSON.stringify(numbersAfterCode)}`);
-
-        // 飛竜の価格表構造:
-        // [小売価格税抜, 小売価格税込, 卸価格税抜, 卸価格税込, 卸単位, 摘要, ... 注文数]
-        // 価格は数千〜数十万、卸単位は60/70/80/90、注文数は1〜999
-
-        // 注文数は行の末尾付近にある、卸単位(60/70/80/90)より後の数字
-        const unitCandidates = [60, 70, 80, 90];
-        let foundOrder = false;
-
-        // 卸単位を見つけて、その後の数字を注文数とする
-        for (let i = 0; i < numbersAfterCode.length; i++) {
-            if (unitCandidates.includes(numbersAfterCode[i])) {
-                // 卸単位の後に来る数字が注文数
-                for (let j = i + 1; j < numbersAfterCode.length; j++) {
-                    const maybeQty = numbersAfterCode[j];
-                    if (maybeQty >= 1 && maybeQty <= 999 && !unitCandidates.includes(maybeQty)) {
-                        result.products.push({
-                            code: code,
-                            quantity: maybeQty,
-                            unit: ''
-                        });
+        for (let k = 0; k < numbersAfterCode.length; k++) {
+            if (unitCandidates.has(numbersAfterCode[k])) {
+                for (let m = k + 1; m < numbersAfterCode.length; m++) {
+                    const maybeQty = numbersAfterCode[m];
+                    if (maybeQty >= 1 && maybeQty <= 999 && !unitCandidates.has(maybeQty)) {
+                        products.push({ code, quantity: maybeQty, unit: '' });
                         processedCodes.add(code);
-                        console.log(`飛竜注文検出: コード=${code}, 数量=${maybeQty}`);
-                        foundOrder = true;
+                        console.log(`飛竜注文検出（テキスト）: コード=${code}, 数量=${maybeQty}`);
                         break;
                     }
                 }
                 break;
             }
         }
-
-        if (foundOrder) continue;
-
-        // フォールバック: 末尾の数字で、価格でないもの
-        const lastNum = numbersAfterCode[numbersAfterCode.length - 1];
-        const secondLastNum = numbersAfterCode[numbersAfterCode.length - 2];
-
-        // 末尾の数字が1〜999で、その前が卸単位候補（60/70/80/90）なら注文数
-        if (lastNum >= 1 && lastNum <= 999 && unitCandidates.includes(secondLastNum)) {
-            result.products.push({
-                code: code,
-                quantity: lastNum,
-                unit: ''
-            });
-            processedCodes.add(code);
-            console.log(`飛竜注文検出（末尾）: コード=${code}, 数量=${lastNum}`);
-        }
     }
 
-    return result;
+    return products;
 }
 
 /**
