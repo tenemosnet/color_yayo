@@ -1,183 +1,89 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、Claude Code (claude.ai/code) がこのリポジトリで作業する際のガイダンスを提供します。
 
-## Project Overview
+## プロジェクト概要
 
-カラーミーショップ（Color Me Shop）の受注データを弥生販売（Yayoi Sales）の売上伝票形式に変換するWebアプリケーション。月末の経理作業を効率化します。
+カラーミーショップの受注データと卸売注文を弥生販売の売上伝票形式に変換するWebアプリケーション。ブラウザベースのES6 Modulesアプリケーション (v4.2)。ビルド不要。
 
-Browser-based ES6 Modules application (ver 3.5). No build step required.
-
-## Commands
+## コマンド
 
 ```bash
-# Start development server (opens browser automatically)
-npm start
-
-# Alternative methods
-npx http-server -p 8000 -o
-python3 -m http.server 8000
+npm start                        # 開発サーバー起動（ポート8000、ブラウザ自動起動）
+npx http-server -p 8000 -o      # 代替方法
+python3 -m http.server 8000     # 代替方法（自動起動なし）
 ```
 
-**CRITICAL**: Must run via local server. ES6 Modules will NOT work with `file://` protocol due to CORS restrictions.
+**重要**: ローカルサーバー経由で実行必須。`file://`プロトコルではES6 ModulesのCORS制限により動作しない。
 
-## Architecture
+テスト・リンター・ビルドステップなし。依存ライブラリはHTML内でCDN読み込み（`xlsx`のみpackage.json）。
 
-### Module Structure
+## アーキテクチャ
 
-ES6 Modules with clear separation of concerns:
+### エントリーポイント
 
-1. **main.js** - Application lifecycle and event handling
-   - Initializes all event listeners
-   - Coordinates workflow between modules
-   - Global state management (colormeOrders, yayoiCustomers, newCustomersList)
+- **index.html** - ランディングページ（小売/卸売選択）
+- **retail.html** - カラーミーCSV → 弥生変換（v3.5ワークフロー）
+- **wholesale.html** - 卸売注文処理（山善/やつはタブUI）
 
-2. **config.js** - Business rules configuration
-   - `setProducts`: Set product definitions (product bundles that need to be decomposed)
-   - `shippingCodes`: Prefecture-to-shipping-code mappings
-   - `calculateCODFee(paymentTotal)`: Cash-on-delivery fee calculation logic
-   - `YAYOI_FORMAT`: Output format constants (59 fields, tab-delimited, CRLF, Shift-JIS)
+### モジュール構成
 
-3. **parser.js** - CSV/Excel parsing
-   - `parseColorMeCSV()`: Parses Shift-JIS encoded Color Me Shop CSV
-   - `parseYayoiCSV()`: Parses UTF-8 BOM encoded Yayoi customer master CSV
-   - `convertExcelToCSV()`: Converts Excel (.xlsx) to CSV format using SheetJS
-
-4. **matcher.js** - Customer matching logic
-   - Priority 1: Email address
-   - Priority 2: Phone number (handles hyphen variations)
-   - Priority 3: Full name match
-   - Auto-generates new customer codes starting from max existing code + 1
-
-5. **converter.js** - Data transformation
-   - `convertToYayoi()`: Converts orders to Yayoi sales slip format
-   - Handles set product decomposition
-   - Adds shipping fees, COD fees, coupon discounts
-   - `downloadAsShiftJIS()`: Uses encoding.js for Shift-JIS conversion
-
-6. **storage.js** - LocalStorage persistence
-   - Customer master data persistence
-   - JSON import/export for cross-PC data transfer
-
-7. **ui.js** - UI operations
-   - Status messages, data tables, button states
-
-### Data Flow
-
-**Two-step workflow** (required because new customers must be imported into Yayoi before generating sales slips):
-
-**Step 1: Customer Matching & Registration**
-1. Upload Color Me CSV (Shift-JIS) + Yayoi customer master (CSV UTF-8 BOM or Excel .xlsx)
-2. Parse files → extract orders and customer data
-3. Match customers by priority: email → phone (hyphen-normalized) → full name
-4. Generate new customer codes starting from `max(existing codes) + 1`
-5. Export new customers as TXT (Shift-JIS, tab-delimited, 48 fields)
-6. **User imports new customers into Yayoi Sales** → marks as registered in UI
-
-**Step 2: Sales Slip Generation**
-1. User selects orders to convert (checkboxes)
-2. Decompose set products into components (config.js)
-3. Add shipping fees (prefecture-based codes), COD fees (tiered calculation), coupon discounts
-4. Generate sales slips as TXT (Shift-JIS, tab-delimited, CRLF, 59 fields)
-5. Download for Yayoi import
-
-**State Management**: Global variables in main.js (`colormeOrders`, `yayoiCustomers`, `newCustomersList`) track workflow state. Customer master data persists in LocalStorage between sessions.
-
-### Key Data Transformations
-
-**Set Products**: Product codes defined in `setProducts` (config.js) are automatically decomposed into component items during conversion. Example: '1229' → ['1221', '1224'].
-
-**Payment Method Logic**:
-- 代引き (Cash on Delivery) → nounyuCode = '001', adds COD fee row calculated via `calculateCODFee()`
-- その他 → nounyuCode = '003'
-
-**Output Format**: 59-field tab-delimited format matching Yayoi Sales import specification. Field 20 (指定売上伝票) is fixed to '334401', Field 40 is fixed to 'テネモスショップ'.
-
-## Configuration
-
-### Version Management
-
-Application version is defined in `js/config.js`:
-
-```javascript
-export const APP_VERSION = "3.5";
+```
+js/
+├── common/
+│   ├── config.js              # 共通設定: 商品マップ、送料コード、代引手数料、YAYOI_FORMAT
+│   └── storage.js             # LocalStorage永続化
+├── retail/                    # カラーミー → 弥生小売変換
+│   ├── main.js                # イベント処理、グローバル状態 (colormeOrders, yayoiCustomers, newCustomersList)
+│   ├── parser.js              # Shift-JIS CSV・Excelパース
+│   ├── matcher.js             # 顧客マッチング: メール → 電話 → 氏名の優先順
+│   ├── converter.js           # 弥生59フィールドTSV生成 + Shift-JISダウンロード
+│   └── ui.js                  # UI状態管理
+└── wholesale/                 # 卸売注文処理 (v4.0+)
+    ├── common/
+    │   ├── vision-api.js      # Google Cloud Vision API OCR（APIキーはLocalStorage保存）
+    │   ├── customer-master.js # 卸売得意先マスタのパース・検索
+    │   └── product-master.js  # 卸売商品マスタ（単価区分別価格対応）
+    ├── yamazen/               # 山善: EMLメール + FAX PDF注文
+    │   ├── main.js            # オーケストレーター（約1600行）: ファイルアップロード、商品編集、一括変換
+    │   ├── eml-parser.js      # EMLパース（Base64/Quoted-Printable、MIMEヘッダー）
+    │   ├── fax-parser.js      # FAX PDF OCR: PDF.jsテキスト抽出 → Tesseract.js/Vision APIフォールバック
+    │   ├── text-parser.js     # 注文行パース（"商品コード 数量"形式）
+    │   └── converter.js       # 弥生59フィールドTSV（納入先コードロジック付き）
+    └── yatsuha/               # やつは: PDF添付ファイル抽出
+        └── pdf-parser.js
 ```
 
-### Product Name Mapping
+### CDN依存ライブラリ（HTML内で読み込み）
 
-Custom product names that differ between Color Me Shop and Yayoi Sales are mapped in `js/config.js`:
+- **encoding.js** - Shift-JISエンコード/デコード
+- **SheetJS (xlsx.js)** - Excelファイルパース
+- **PDF.js** - PDFテキスト抽出
+- **Tesseract.js** - FAX画像OCRフォールバック
+- **Google Cloud Vision API** - 低品質FAX向けオプションOCR
 
-```javascript
-export const productNameMap = {
-    '1364': 'Ag・uA(ｱｸﾞｱ)100mlｽﾌﾟﾚｰﾎﾞﾄﾙ',
-    '1369': 'Ag・uAアグア650mlパック(酵素水)',
-    // ...
-};
-```
+### データフロー
 
-### Add/Modify Set Products
+**小売（2段階ワークフロー）**:
+1. カラーミーCSV (Shift-JIS) + 弥生得意先マスタをアップロード → 顧客マッチング（メール→電話→氏名） → 新規顧客TXTエクスポート → 弥生にインポート
+2. 注文選択 → セット商品分解 → 送料・代引手数料・クーポン追加 → 弥生59フィールドTSV生成（Shift-JIS、タブ区切り、CRLF）
 
-Edit `js/config.js`:
+**卸売**:
+1. 取引先別の入力ファイル（EMLメール、FAX PDF、PDF添付）+ 得意先・商品マスタをアップロード
+2. 必要に応じてOCR（FAX） → 注文パース → 商品編集テーブル → 確定 → 弥生TSV一括変換
 
-```javascript
-export const setProducts = {
-    '1229': [
-        { code: '1221', name: 'ビダウォーターソープ詰替用', price: 2420 },
-        { code: '1224', name: '泡ポンプ400ml空容器', price: 800 }
-    ]
-};
-```
+### 主要ビジネスロジック
 
-### Update Shipping Codes
+- **セット商品** (`config.js`): 変換時にバンドル商品を構成品に分解（例: '1229' → ['1221', '1224']）
+- **支払/納入コード**: 代引き→'001'+代引手数料行追加、振込→'003'、卸売は得意先別マッピング（山善→'020'、やつは/飛竜→'030'）
+- **単価区分別価格**（卸売）: 得意先の`tankaSyurui`で単価区分（price1/price2/price3）を選択
+- **出力形式**: 59フィールド、タブ区切り、Shift-JIS、CRLF。フィールド20は'334401'固定、フィールド40は'テネモスショップ'固定
 
-Edit `js/config.js`:
+### ファイルエンコーディング
 
-```javascript
-export const shippingCodes = {
-    '北海道': '0013',
-    '東京都': '0010',
-    // ...
-};
-```
+- **入力**: カラーミーCSV (Shift-JIS)、弥生マスタ (CSV UTF-8 BOM または Excel .xlsx)
+- **出力**: 全TXTファイル (Shift-JIS、タブ区切り、CRLF)
 
-### Modify COD Fee Calculation
+## 設定
 
-Edit `js/config.js`:
-
-```javascript
-export function calculateCODFee(paymentTotal) {
-    if (paymentTotal < 10000) return 330;
-    if (paymentTotal < 30000) return 440;
-    if (paymentTotal < 100000) return 660;
-    return 1100;
-}
-```
-
-### Change Default Values
-
-Edit constants in `js/config.js`:
-
-```javascript
-export const YAYOI_FORMAT = {
-    DEFAULT_TANTOSHA_CODE: '14',  // Default salesperson code
-    DEFAULT_NOUNYU_CODE_BANK: '003',  // Bank transfer
-    DEFAULT_NOUNYU_CODE_COD: '001',   // Cash on delivery
-    // ...
-};
-```
-
-## File Encoding Handling
-
-- **Input**: Color Me CSV (Shift-JIS), Yayoi customer master (CSV UTF-8 BOM or Excel .xlsx)
-- **Output**: All TXT files (Shift-JIS, tab-delimited, CRLF)
-- **External dependencies** (CDN loaded in index.html):
-  - encoding.js - handles Shift-JIS conversion via `downloadAsShiftJIS()` in converter.js
-  - SheetJS (xlsx.js) - handles Excel (.xlsx) file parsing via `convertExcelToCSV()` in parser.js
-
-## Common Issues
-
-**"Failed to load module script" error**: Application opened via `file://` protocol. Must use local server.
-
-**Customer matching fails**: Yayoi customer master CSV must have email addresses registered. Matching prioritizes email → phone → name.
-
-**Output file appears garbled in text editor**: Expected behavior. Import into Yayoi Sales for proper Shift-JIS display.
+全ビジネスルールは `js/common/config.js` に集約: `APP_VERSION`、`productNameMap`、`setProducts`、`shippingCodes`、`calculateCODFee()`、`YAYOI_FORMAT`定数。
