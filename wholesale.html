@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>卸販売→弥生販売 変換ツール ver 4.2</title>
+    <title>卸販売→弥生販売 変換ツール ver 4.3</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
         /* 卸販売ページ専用スタイル */
@@ -44,61 +44,6 @@
 
         .back-link:hover {
             background: rgba(255,255,255,0.3);
-        }
-
-        /* タブメニュー */
-        .tab-menu {
-            display: flex;
-            background: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-        }
-
-        .tab-button {
-            flex: 1;
-            padding: 20px 30px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            color: #666;
-            transition: all 0.3s;
-            position: relative;
-        }
-
-        .tab-button:hover {
-            background: #e9ecef;
-        }
-
-        .tab-button.active {
-            color: #667eea;
-            background: white;
-        }
-
-        .tab-button.active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: #667eea;
-        }
-
-        .tab-button .tab-icon {
-            font-size: 24px;
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        /* タブコンテンツ */
-        .tab-content {
-            display: none;
-            padding: 30px;
-        }
-
-        .tab-content.active {
-            display: block;
         }
 
         /* 卸販売共通スタイル */
@@ -368,30 +313,15 @@
 <body>
     <div class="container">
         <div class="wholesale-header">
-            <h1>🏭 卸販売→弥生販売 変換ツール <span class="version">ver 4.2</span></h1>
+            <h1>🏭 卸販売→弥生販売 変換ツール <span class="version">ver 4.3</span></h1>
             <a href="index.html" class="back-link">
                 ← トップに戻る
             </a>
         </div>
 
-        <!-- タブメニュー -->
-        <div class="tab-menu">
-            <button class="tab-button active" data-tab="yamazen">
-                <span class="tab-icon">📦</span>
-                山善様
-            </button>
-            <button class="tab-button" data-tab="yatsuha">
-                <span class="tab-icon">📄</span>
-                やつは様
-            </button>
-        </div>
-
-        <div class="content">
+        <div class="content" style="padding: 30px;">
             <!-- ステータス表示 -->
             <div id="wholesaleStatus" class="wholesale-status" style="display: none;"></div>
-
-            <!-- 山善様タブ -->
-            <div id="yamazen-tab" class="tab-content active">
                 <!-- マスタ読込セクション -->
                 <div class="wholesale-section" style="background: #f5f5f5;">
                     <h2 style="color: #333;">📂 マスタデータ読込</h2>
@@ -460,7 +390,7 @@
                     <h2>📧 注文ファイルをアップロード</h2>
                     <p style="color: #666; margin-bottom: 20px;">
                         注文メール（.eml）または注文書PDF（.pdf）をドラッグ&ドロップまたは選択してください。<br>
-                        <small>対応: 山善様（EML）、やつは様（PDF）</small>
+                        <small>取引先は自動判別されます（EMLメール / テキストPDF / FAX PDF対応）</small>
                     </p>
                     <div class="file-upload-box" id="yamazenUploadBox" style="border-color: #667eea;">
                         <div class="upload-icon">📋</div>
@@ -543,56 +473,6 @@
                         🚀 選択した注文をTXT変換
                     </button>
                 </div>
-            </div>
-
-            <!-- やつは様タブ -->
-            <div id="yatsuha-tab" class="tab-content">
-                <div class="wholesale-section">
-                    <h2>📎 EMLファイルをアップロード</h2>
-                    <p style="color: #666; margin-bottom: 20px;">
-                        やつは様からの注文メール（.eml形式）をドラッグ&ドロップまたは選択してください。<br>
-                        添付されているPDFから自動的に注文データを抽出します。
-                    </p>
-                    <div class="file-upload-box" id="yatsuhaUploadBox" style="border-color: #667eea;">
-                        <div class="upload-icon">📧</div>
-                        <h3 style="color: #667eea;">EMLファイル</h3>
-                        <p>ドラッグ&ドロップ または クリックして選択</p>
-                        <input type="file" id="yatsuhaInput" accept=".eml" style="display: none;">
-                        <label for="yatsuhaInput" class="wholesale-btn" style="display: inline-block; margin-top: 10px;">
-                            📂 ファイルを選択
-                        </label>
-                        <div class="file-name" id="yatsuhaFileName"></div>
-                    </div>
-                </div>
-
-                <!-- プレビュー（PDF抽出後に表示） -->
-                <div id="yatsuhaPreviewSection" class="wholesale-section" style="display: none;">
-                    <h2>📋 抽出データプレビュー</h2>
-                    <div id="yatsuhaProductTable"></div>
-                </div>
-
-                <!-- 変換設定（データ抽出後に表示） -->
-                <div id="yatsuhaConvertSection" class="wholesale-section" style="display: none;">
-                    <h2>⚙️ 変換設定</h2>
-                    <div class="settings-form">
-                        <div class="form-group">
-                            <label for="yatsuhaDenpyoNo">伝票番号</label>
-                            <input type="text" id="yatsuhaDenpyoNo" placeholder="伝票番号を入力">
-                        </div>
-                        <div class="form-group">
-                            <label for="yatsuhaOrderDate">受注日</label>
-                            <input type="date" id="yatsuhaOrderDate">
-                        </div>
-                        <div class="form-group">
-                            <label for="yatsuhaTantousha">担当者コード</label>
-                            <input type="text" id="yatsuhaTantousha" value="11">
-                        </div>
-                    </div>
-                    <button id="yatsuhaConvertBtn" class="wholesale-btn" style="width: 100%;">
-                        🚀 弥生販売TXTをダウンロード
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -612,34 +492,19 @@
     <!-- Tesseract.js (FAX PDF OCR用) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
-    <!-- タブ切り替えスクリプト -->
     <script>
-        // タブ切り替え
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => {
-                // アクティブタブを切り替え
-                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-                button.classList.add('active');
-                const tabId = button.dataset.tab + '-tab';
-                document.getElementById(tabId).classList.add('active');
-            });
-        });
-
         // 今日の日付をデフォルト設定
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('yamazenOrderDate').value = today;
-        document.getElementById('yatsuhaOrderDate').value = today;
     </script>
 
-    <!-- 山善様メインJavaScript -->
+    <!-- 卸売注文メインJavaScript -->
     <script type="module">
-        import { initYamazen } from './js/wholesale/yamazen/main.js';
+        import { initWholesale } from './js/wholesale/main.js';
 
         // ページ読み込み完了後に初期化
         document.addEventListener('DOMContentLoaded', () => {
-            initYamazen();
+            initWholesale();
         });
     </script>
 </body>

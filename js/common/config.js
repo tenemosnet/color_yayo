@@ -1,10 +1,10 @@
 /**
  * config.js - アプリケーション設定
- * ver 3.5 - Excel対応版
+ * ver 4.3 - 軽減税率対応版
  */
 
 // アプリケーション設定
-export const APP_VERSION = "3.5";
+export const APP_VERSION = "4.3";
 export const STORAGE_KEY = "yayoiCustomersData";
 
 // 商品名称マッピング（カラーミー→弥生販売）

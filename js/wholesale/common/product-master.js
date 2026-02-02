@@ -48,11 +48,12 @@ export function parseProductMasterCSV(csvText) {
 
     const codeIndex = headers.findIndex(h => h === 'コード');
     const nameIndex = headers.findIndex(h => h === '名称');
+    const category1Index = headers.findIndex(h => h === '分類１');
     const price1Index = headers.findIndex(h => h === '税抜売上単価１');
     const price2Index = headers.findIndex(h => h === '税抜売上単価２');
     const price3Index = headers.findIndex(h => h === '税抜売上単価３');
 
-    console.log('カラムインデックス: コード=', codeIndex, ', 名称=', nameIndex, ', 税抜売上単価１=', price1Index, ', 税抜売上単価２=', price2Index, ', 税抜売上単価３=', price3Index);
+    console.log('カラムインデックス: コード=', codeIndex, ', 名称=', nameIndex, ', 分類１=', category1Index, ', 税抜売上単価１=', price1Index, ', 税抜売上単価２=', price2Index, ', 税抜売上単価３=', price3Index);
 
     if (codeIndex === -1 || nameIndex === -1) {
         console.error('必須カラムが見つかりません。ヘッダー:', headers);
@@ -75,9 +76,12 @@ export function parseProductMasterCSV(csvText) {
         const price2 = parsePrice(fields[price2Index]);
         const price3 = parsePrice(fields[price3Index]);
 
+        const category1 = (fields[category1Index] || '').trim();
+
         productMap.set(code, {
             code,
             name,
+            category1,  // 分類１（"07"=食料品 → 軽減税率8%）
             price1,  // 税抜売上単価１
             price2,  // 税抜売上単価２
             price3   // 税抜売上単価３
@@ -227,6 +231,19 @@ export function getProductPrices(code) {
         price2: product.price2 || 0,
         price3: product.price3 || 0
     };
+}
+
+/**
+ * 商品コードから分類１を取得
+ * @param {string} code - 商品コード
+ * @returns {string} 分類１コード（例: "07"=食料品）
+ */
+export function getProductCategory1(code) {
+    const master = loadProductMaster();
+    if (!master) return '';
+
+    const product = master.get(code);
+    return product ? (product.category1 || '') : '';
 }
 
 /**
