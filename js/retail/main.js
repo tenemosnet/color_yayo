@@ -9,6 +9,7 @@ import { performCustomerMatching } from './matcher.js';
 import { convertToYayoi, downloadAsShiftJIS } from './converter.js';
 import { showStatus, displaySummary, displayNewCustomers, displayOrders, toggleHelpModal, toggleAdvancedSettings, displayFileName, setButtonEnabled, getDateString } from './ui.js';
 import { getProductCategory1 } from '../common/product-master.js';
+import { loadCustomerMaster } from '../common/customer-master.js';
 
 // グローバル変数
 let colormeOrders = [];
@@ -20,7 +21,40 @@ let displayedOrders = [];
 window.addEventListener('DOMContentLoaded', () => {
     checkStoredData();
     setupEventListeners();
+    loadCustomersFromCommonMaster();
 });
+
+/**
+ * 共通マスタから顧客データを読み込み（小売用に変換）
+ */
+function loadCustomersFromCommonMaster() {
+    const commonMaster = loadCustomerMaster();
+    if (!commonMaster || commonMaster.size === 0) return;
+
+    // 共通マスタ（Map）を小売用の配列形式に変換
+    const customers = [];
+    for (const [code, customer] of commonMaster) {
+        customers.push({
+            customerCode: customer.code,
+            name: customer.name,
+            furigana: '',
+            phone: '',
+            email: customer.email || ''
+        });
+    }
+
+    if (customers.length > 0) {
+        yayoiCustomers = customers;
+        displayFileName('yayoiName', `共通マスタ（${customers.length}件）`, '#1976d2');
+        console.log(`共通マスタから顧客データを読み込み: ${customers.length}件`);
+
+        // ボックスに読み込み完了クラスを追加
+        const box = document.getElementById('yayoiUploadBox');
+        if (box) box.classList.add('loaded');
+
+        checkBothFilesLoaded();
+    }
+}
 
 /**
  * イベントリスナーをセットアップ
