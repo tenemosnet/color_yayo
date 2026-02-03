@@ -4,6 +4,10 @@
  */
 
 import { setProducts, productNameMap, shippingCodes, calculateCODFee, YAYOI_FORMAT } from '../common/config.js';
+import { getProductCategory1 } from '../common/product-master.js';
+
+// 軽減税率対象の分類コード（食料品）
+const REDUCED_TAX_CATEGORY1 = '07';
 
 /**
  * 商品がセット商品かチェック
@@ -59,6 +63,10 @@ export function convertToYayoi(orders, settings) {
                 // セット商品の場合は構成商品に分解
                 const setComponents = setProducts[item.productCode];
                 setComponents.forEach(component => {
+                    // 構成商品ごとに軽減税率判定
+                    const category1 = getProductCategory1(component.code);
+                    const taxCategory = (category1 === REDUCED_TAX_CATEGORY1) ? 30 : 13;
+
                     const row = createRow({
                         denpyoDate,
                         denpyoNo: String(currentDenpyoNo).padStart(4, '0'),
@@ -71,12 +79,17 @@ export function convertToYayoi(orders, settings) {
                         quantity: item.quantity,
                         unitPrice: component.price,
                         amount: component.price * item.quantity,
-                        customerName
+                        customerName,
+                        taxCategory
                     });
                     tsvLines.push(row);
                 });
             } else {
                 // 通常商品
+                // 商品マスタから分類を取得して軽減税率判定
+                const category1 = getProductCategory1(item.productCode);
+                const taxCategory = (category1 === REDUCED_TAX_CATEGORY1) ? 30 : 13;
+
                 const row = createRow({
                     denpyoDate,
                     denpyoNo: String(currentDenpyoNo).padStart(4, '0'),
@@ -89,7 +102,8 @@ export function convertToYayoi(orders, settings) {
                     quantity: item.quantity,
                     unitPrice: item.unitPrice,
                     amount: item.subtotal,
-                    customerName
+                    customerName,
+                    taxCategory
                 });
                 tsvLines.push(row);
             }
@@ -203,7 +217,7 @@ function createRow(data) {
         data.productCode,               // 見出し16: 商品コード
         '',                             // 見出し17: 入金区分コード
         data.productName,               // 見出し18: 商品名
-        13,                             // 見出し19: 課税区分
+        data.taxCategory || 13,         // 見出し19: 課税区分（13:標準10%, 30:軽減8%）
         '',                             // 見出し20
         0,                              // 見出し21
         0,                              // 見出し22

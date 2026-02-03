@@ -2,7 +2,7 @@
  * text-parser.js - メール本文から商品データを抽出
  * コード付き形式（山善等）と商品名ベース形式（マザーズアイ等）に対応
  */
-import { searchProductsByText } from '../common/product-master.js';
+import { searchProductsByText } from '../../common/product-master.js';
 
 /**
  * 全角数字を半角に変換

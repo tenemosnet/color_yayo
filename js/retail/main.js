@@ -8,6 +8,7 @@ import { parseColorMeCSV, parseYayoiCSV, convertExcelToCSV } from './parser.js';
 import { performCustomerMatching } from './matcher.js';
 import { convertToYayoi, downloadAsShiftJIS } from './converter.js';
 import { showStatus, displaySummary, displayNewCustomers, displayOrders, toggleHelpModal, toggleAdvancedSettings, displayFileName, setButtonEnabled, getDateString } from './ui.js';
+import { getProductCategory1 } from '../common/product-master.js';
 
 // グローバル変数
 let colormeOrders = [];

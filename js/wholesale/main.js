@@ -6,7 +6,7 @@
 import { readEmlFile, formatDateForInput } from './parsers/eml-parser.js';
 import { extractProductData, calculateAmount, calculateTotal } from './parsers/text-parser.js';
 import { convertToYayoiFormat, downloadAsShiftJIS, getDateString, determineNounyuCode } from './converter.js';
-import { loadProductMasterFile, loadProductMaster, getProductMasterInfo, getWholesalePrice, getProductName, getProductCategory1, clearProductMaster } from './common/product-master.js';
+import { loadProductMasterFile, loadProductMaster, getProductMasterInfo, getWholesalePrice, getProductName, getProductCategory1, clearProductMaster } from '../common/product-master.js';
 import {
     loadCustomerMasterFile,
     loadCustomerMaster,
@@ -15,8 +15,10 @@ import {
     findCustomerByName,
     findCustomerByDomain,
     findCustomerByEmail,
-    getCustomerByCode
-} from './common/customer-master.js';
+    getCustomerByCode,
+    setDomainMapping
+} from '../common/customer-master.js';
+import { getDomainToNameMapping } from './registry.js';
 import { shippingCodes } from '../common/config.js';
 import { VENDORS } from './registry.js';
 import { readPdfFile, parseOrderTable } from './parsers/pdf-parser.js';
@@ -37,6 +39,9 @@ let confirmedOrders = [];
  * 初期化
  */
 export function initWholesale() {
+    // ドメインマッピングを共通マスタに設定
+    setDomainMapping(getDomainToNameMapping());
+
     setupEventListeners();
     setDefaultDate();
     checkProductMaster();
