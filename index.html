@@ -96,6 +96,59 @@
             margin-bottom: 30px;
         }
 
+        .master-section-header {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .master-section-header h2 {
+            color: #333;
+            font-size: 18px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .master-section-summary {
+            font-size: 13px;
+            color: #888;
+            margin-left: 15px;
+            white-space: nowrap;
+        }
+
+        .master-section-summary.has-data {
+            color: #1976d2;
+        }
+
+        .master-toggle-icon {
+            font-size: 14px;
+            color: #999;
+            transition: transform 0.3s;
+            margin-left: 10px;
+        }
+
+        .master-section.collapsed .master-toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .master-section-body {
+            overflow: hidden;
+            max-height: 500px;
+            transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+            opacity: 1;
+            margin-top: 15px;
+        }
+
+        .master-section.collapsed .master-section-body {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+        }
+
         .master-section h2 {
             color: #333;
             font-size: 18px;
@@ -450,8 +503,13 @@
 
         <!-- 共通マスタ読込セクション -->
         <div style="padding: 20px 30px 0;">
-            <div class="master-section">
-                <h2>📂 マスタデータ（共通）</h2>
+            <div class="master-section" id="masterSection">
+                <div class="master-section-header" id="masterSectionHeader">
+                    <h2>📂 マスタデータ（共通）</h2>
+                    <span class="master-section-summary" id="masterSectionSummary"></span>
+                    <span class="master-toggle-icon">▼</span>
+                </div>
+                <div class="master-section-body" id="masterSectionBody">
                 <p style="color: #666; margin-bottom: 15px; font-size: 13px;">
                     弥生販売からエクスポートしたマスタを読み込みます。一度読み込むとブラウザに保存され、小売・卸売の両方で使用されます。
                 </p>
@@ -482,6 +540,7 @@
                         <button id="clearProductMasterBtn" class="master-btn">クリア</button>
                     </div>
                 </div>
+                </div><!-- /.master-section-body -->
             </div>
         </div>
 
@@ -810,6 +869,31 @@
         import { loadProductMasterFile, getProductMasterInfo, clearProductMaster } from './js/common/product-master.js';
 
         document.addEventListener('DOMContentLoaded', () => {
+            // アコーディオン制御
+            const masterSection = document.getElementById('masterSection');
+            const masterHeader = document.getElementById('masterSectionHeader');
+            const summarySpan = document.getElementById('masterSectionSummary');
+
+            function updateMasterSummary() {
+                const customer = getCustomerMasterInfo();
+                const product = getProductMasterInfo();
+                const parts = [];
+                if (customer) parts.push(`顧客 ${customer.count}件`);
+                if (product) parts.push(`商品 ${product.count}件`);
+
+                if (parts.length > 0) {
+                    summarySpan.textContent = parts.join(' / ');
+                    summarySpan.classList.add('has-data');
+                } else {
+                    summarySpan.textContent = '未読込';
+                    summarySpan.classList.remove('has-data');
+                }
+            }
+
+            masterHeader.addEventListener('click', () => {
+                masterSection.classList.toggle('collapsed');
+            });
+
             // 顧客マスタUI
             const customerUploadBox = document.getElementById('customerMasterUploadBox');
             const customerInput = document.getElementById('customerMasterInput');
@@ -834,6 +918,7 @@
                 clearCustomerMaster();
                 customerInfo.style.display = 'none';
                 customerInfo.innerHTML = '';
+                updateMasterSummary();
             });
 
             async function handleCustomerMasterFile(file) {
@@ -842,6 +927,7 @@
                     customerInfo.innerHTML = `✅ ${result.count}件読込完了`;
                     customerInfo.style.display = 'block';
                     customerInfo.style.color = '#2e7d32';
+                    updateMasterSummary();
                 } catch (error) {
                     customerInfo.innerHTML = `❌ ${error.message}`;
                     customerInfo.style.display = 'block';
@@ -881,6 +967,7 @@
                 clearProductMaster();
                 productInfo.style.display = 'none';
                 productInfo.innerHTML = '';
+                updateMasterSummary();
             });
 
             async function handleProductMasterFile(file) {
@@ -889,6 +976,7 @@
                     productInfo.innerHTML = `✅ ${result.count}件読込完了`;
                     productInfo.style.display = 'block';
                     productInfo.style.color = '#2e7d32';
+                    updateMasterSummary();
                 } catch (error) {
                     productInfo.innerHTML = `❌ ${error.message}`;
                     productInfo.style.display = 'block';
@@ -903,6 +991,23 @@
                 productInfo.style.display = 'block';
                 productInfo.style.color = '#2e7d32';
             }
+
+            // 要約を更新し、マスタ保存済みなら折り畳む
+            updateMasterSummary();
+            if (storedCustomer || storedProduct) {
+                masterSection.classList.add('collapsed');
+            }
+
+            // 小売タブからの顧客マスタ更新イベントを監視
+            window.addEventListener('customerMasterUpdated', () => {
+                const info = getCustomerMasterInfo();
+                if (info) {
+                    customerInfo.innerHTML = `💾 ${info.count}件（小売タブから更新）`;
+                    customerInfo.style.display = 'block';
+                    customerInfo.style.color = '#1976d2';
+                }
+                updateMasterSummary();
+            });
         });
     </script>
 </body>

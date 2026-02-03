@@ -9,7 +9,7 @@ import { performCustomerMatching } from './matcher.js';
 import { convertToYayoi, downloadAsShiftJIS } from './converter.js';
 import { showStatus, displaySummary, displayNewCustomers, displayOrders, toggleHelpModal, toggleAdvancedSettings, displayFileName, setButtonEnabled, getDateString } from './ui.js';
 import { getProductCategory1 } from '../common/product-master.js';
-import { loadCustomerMaster } from '../common/customer-master.js';
+import { loadCustomerMaster, loadCustomerMasterFile } from '../common/customer-master.js';
 
 // グローバル変数
 let colormeOrders = [];
@@ -53,6 +53,19 @@ function loadCustomersFromCommonMaster() {
         if (box) box.classList.add('loaded');
 
         checkBothFilesLoaded();
+    }
+}
+
+/**
+ * 小売タブのファイルアップロードを共通マスタにも同期保存
+ */
+async function syncToCommonMaster(file) {
+    try {
+        await loadCustomerMasterFile(file);
+        window.dispatchEvent(new CustomEvent('customerMasterUpdated'));
+        console.log('共通マスタに同期保存しました');
+    } catch (error) {
+        console.warn('共通マスタへの同期保存に失敗（小売用データは正常）:', error.message);
     }
 }
 
@@ -223,6 +236,9 @@ function handleYayoiCSVFile(file) {
             if (box) box.classList.add('loaded');
 
             checkBothFilesLoaded();
+
+            // 共通マスタにも同期保存
+            syncToCommonMaster(file);
         } catch (error) {
             showStatus(`❌ エラー: ${error.message}`, 'error');
             console.error('CSV読み込みエラー:', error);
@@ -259,6 +275,9 @@ function handleYayoiExcelFile(file) {
             if (box) box.classList.add('loaded');
 
             checkBothFilesLoaded();
+
+            // 共通マスタにも同期保存
+            syncToCommonMaster(file);
         } catch (error) {
             showStatus(`❌ エラー: ${error.message}`, 'error');
             console.error('Excel読み込みエラー:', error);
