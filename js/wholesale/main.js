@@ -14,9 +14,11 @@ import {
     clearCustomerMaster,
     findCustomerByName,
     findCustomerByDomain,
+    findCustomerByEmail,
     getCustomerByCode
 } from './common/customer-master.js';
 import { shippingCodes } from '../common/config.js';
+import { VENDORS } from './registry.js';
 import { readPdfFile, parseOrderTable } from './parsers/pdf-parser.js';
 import { readFaxPdfFile, parsePastedOrderText } from './parsers/fax-parser.js';
 import { saveVisionApiKey, getVisionApiKey, hasVisionApiKey, clearVisionApiKey } from './common/vision-api.js';
@@ -26,6 +28,7 @@ let currentProducts = [];
 let emailDate = null;
 let detectedCustomer = null;  // 検出された顧客情報
 let currentEmlFileName = '';  // 現在処理中のEMLファイル名
+let currentEmailBody = '';    // 現在処理中のメール本文（参照用）
 
 // 確認済み注文リスト
 let confirmedOrders = [];
@@ -291,8 +294,9 @@ async function handleEmlFile(file) {
             }
         }
 
-        // ファイル名を保存・表示
+        // ファイル名・メール本文を保存・表示
         currentEmlFileName = file.name;
+        currentEmailBody = emlData.body || '';
         displayFileName(file.name);
 
         // 顧客を検出
@@ -301,10 +305,7 @@ async function handleEmlFile(file) {
             console.log('顧客検出成功:', detectedCustomer);
             displayDetectedCustomer(detectedCustomer);
         } else {
-            // 卸販売では顧客特定が必須 - エラーで中断
-            console.error('顧客を検出できませんでした - 処理中断');
-            showStatus('❌ 顧客を特定できませんでした。顧客マスタにドメイン/会社名が登録されているか確認してください。', 'error');
-            return;  // 処理を中断
+            console.warn('顧客を検出できませんでした - 手動設定で続行');
         }
 
         // 日付を設定
@@ -322,9 +323,7 @@ async function handleEmlFile(file) {
         currentProducts = extractProductData(emlData.body);
 
         if (currentProducts.length === 0) {
-            showStatus('商品データが見つかりませんでした。メール形式を確認してください。', 'error');
-            console.log('Email body:', emlData.body);
-            return;
+            console.log('商品自動抽出: 0件。Email body:', emlData.body);
         }
 
         // 商品マスタから単価を自動設定（顧客の単価種類に応じて）
@@ -370,10 +369,21 @@ async function handleEmlFile(file) {
 
         // 商品件数から送料を除外
         const productCount = currentProducts.filter(p => !p.isShipping).length;
-        const statusMsg = detectedCustomer
-            ? `✅ ${productCount}件の商品を抽出しました（${detectedCustomer.name}、送料込み）`
-            : `✅ ${productCount}件の商品を抽出しました`;
-        showStatus(statusMsg, 'success');
+        let statusMsg, statusType;
+        if (productCount === 0 && !detectedCustomer) {
+            statusMsg = '⚠ 顧客未検出・商品自動抽出0件です。メール本文を確認し、手動で設定してください。';
+            statusType = 'warning';
+        } else if (productCount === 0) {
+            statusMsg = `⚠ 商品を自動抽出できませんでした（${detectedCustomer.name}）。メール本文を確認し、手動で追加してください。`;
+            statusType = 'warning';
+        } else if (!detectedCustomer) {
+            statusMsg = `⚠ ${productCount}件の商品を抽出しました（顧客未検出 — 得意先コード等を手動設定してください）`;
+            statusType = 'warning';
+        } else {
+            statusMsg = `✅ ${productCount}件の商品を抽出しました（${detectedCustomer.name}、送料込み）`;
+            statusType = 'success';
+        }
+        showStatus(statusMsg, statusType);
 
     } catch (error) {
         showStatus(`❌ エラー: ${error.message}`, 'error');
@@ -547,7 +557,20 @@ function detectCustomerFromEml(emlData) {
         }
     }
 
-    // 方法3: メール本文の署名から検索
+    // 方法3: メールアドレス完全一致で検索
+    if (emlData.from) {
+        // From: "Name <email>" からメールアドレス部分を抽出
+        const emailMatch = emlData.from.match(/<([^>]+)>/) || emlData.from.match(/([^\s<>]+@[^\s<>]+)/);
+        if (emailMatch) {
+            const customer = findCustomerByEmail(emailMatch[1]);
+            if (customer) {
+                console.log('顧客検出（メールアドレス）:', emailMatch[1]);
+                return customer;
+            }
+        }
+    }
+
+    // 方法4: メール本文の署名から検索
     const signatureCompany = extractCompanyFromSignature(emlData.body);
     if (signatureCompany) {
         const customer = findCustomerByName(signatureCompany);
@@ -607,6 +630,7 @@ function displayDetectedCustomer(customer) {
                 <tr><td style="width: 100px; color: #666;">得意先コード:</td><td><strong>${customer.code}</strong></td></tr>
                 <tr><td style="color: #666;">名称:</td><td><strong>${customer.name}</strong></td></tr>
                 <tr><td style="color: #666;">担当者:</td><td>${customer.tantosha || '(未設定)'}</td></tr>
+                <tr><td style="color: #666;">取引区分:</td><td>${{1:'掛売',2:'現金',3:'都度請求',4:'サンプル'}[customer.torihikiKubun] || '(不明)'}</td></tr>
                 <tr><td style="color: #666;">単価種類:</td><td>${priceTypeLabel[customer.priceType] || customer.tankaSyurui}</td></tr>
                 <tr><td style="color: #666;">都道府県:</td><td>${customer.prefecture || '(未設定)'}</td></tr>
             </table>
@@ -811,7 +835,57 @@ function displayProductTable(products) {
     container.innerHTML = '';
     container.appendChild(table);
 
+    updateLotWarnings();
     updateTotal();
+}
+
+/**
+ * ロット数未満の警告メッセージを更新
+ */
+function updateLotWarnings() {
+    const container = document.getElementById('yamazenProductTable');
+    if (!container) return;
+
+    // 既存の警告を削除
+    const existing = container.querySelector('.lot-warning');
+    if (existing) existing.remove();
+
+    const messages = [];
+
+    // 顧客未検出の警告
+    if (!detectedCustomer) {
+        messages.push(`<span style="color: #d32f2f;">⚠ 顧客を検出できませんでした。得意先コード・納入コード等を手動で設定してください。</span>`);
+    }
+
+    // 未登録取引先の警告
+    if (detectedCustomer) {
+        const registeredCodes = Object.values(VENDORS).map(v => v.code);
+        if (!registeredCodes.includes(detectedCustomer.code)) {
+            messages.push(`<span style="color: #d32f2f;">⚠ ${detectedCustomer.name}（${detectedCustomer.code}）はレジストリ未登録の取引先です。納入コード・変換設定が未調整のため、出力内容を確認してください。</span>`);
+        }
+    }
+
+    // ロット数未満の警告
+    currentProducts
+        .filter(p => p.lotSize && p.quantity < p.lotSize && !p.isShipping)
+        .forEach(p => {
+            messages.push(`⚠ ${p.code} ${p.name}: 注文数${p.quantity} < 卸単位${p.lotSize} → ばら売り単価への変更が必要`);
+        });
+
+    // メール本文参照（商品0件または顧客未検出時）
+    const productCount = currentProducts.filter(p => !p.isShipping).length;
+    if (currentEmailBody && (productCount === 0 || !detectedCustomer)) {
+        const escaped = currentEmailBody.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+        messages.push(`<details style="margin-top: 5px;"><summary style="cursor: pointer;">📧 メール本文を表示</summary><div style="margin-top: 8px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; white-space: pre-wrap; font-size: 12px;">${escaped}</div></details>`);
+    }
+
+    if (messages.length > 0) {
+        const div = document.createElement('div');
+        div.className = 'lot-warning';
+        div.style.cssText = 'margin-top: 10px; padding: 10px 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; color: #856404; font-size: 13px; line-height: 1.8;';
+        div.innerHTML = messages.join('<br>');
+        container.appendChild(div);
+    }
 }
 
 /**
@@ -851,6 +925,7 @@ function handleQuantityChange(index) {
     const amount = currentProducts[index].amount;
     amountCell.textContent = amount > 0 ? '¥' + amount.toLocaleString() : '-';
 
+    updateLotWarnings();
     updateTotal();
 }
 

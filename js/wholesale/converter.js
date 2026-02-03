@@ -231,6 +231,6 @@ export function getDateString() {
  * @returns {string} 納入先コード
  */
 export function determineNounyuCode(customer) {
-    if (!customer) return '003';
+    if (!customer) return '';
     return getNounyuCodeByCustomer(customer.code, customer.torihikiKubun);
 }

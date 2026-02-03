@@ -6,12 +6,10 @@
 
 import { loadProductMaster } from '../common/product-master.js';
 import { hasVisionApiKey, ocrWithVisionApi } from '../common/vision-api.js';
+import { getFaxCustomerCodes } from '../registry.js';
 
-// 業者別顧客コード
-const FAX_CUSTOMERS = {
-    OPTIMAL: '000913',    // オプティマルライフ株式会社
-    HIRYU: '001564'       // 株式会社飛竜
-};
+// 業者別顧客コード（レジストリから取得）
+const FAX_CUSTOMERS = getFaxCustomerCodes();
 
 /**
  * FAX PDFファイルを読み込んで注文データを抽出
@@ -849,23 +847,6 @@ function parseHiryuByText(text) {
     }
 
     return products;
-}
-
-/**
- * 日付文字列をYYYY-MM-DD形式に変換
- * @param {string} dateStr - YYYYMMDD形式の日付
- * @returns {string} YYYY-MM-DD形式
- */
-export function formatDateForInput(dateStr) {
-    if (!dateStr || dateStr.length !== 8) {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
 }
 
 /**

@@ -41,9 +41,11 @@ export function clearVisionApiKey() {
 /**
  * CanvasをGoogle Cloud Vision APIでOCR
  * @param {HTMLCanvasElement} canvas - OCR対象のCanvas
- * @returns {Promise<string>} 認識テキスト
+ * @param {Object} options - オプション
+ * @param {boolean} options.withAnnotations - 座標情報付きアノテーションも返す
+ * @returns {Promise<string|Object>} テキスト、またはwithAnnotations時は {text, annotations}
  */
-export async function ocrWithVisionApi(canvas) {
+export async function ocrWithVisionApi(canvas, options = {}) {
     const apiKey = getVisionApiKey();
     if (!apiKey) {
         throw new Error('Google Cloud Vision APIキーが未設定です');
@@ -77,20 +79,29 @@ export async function ocrWithVisionApi(canvas) {
     }
 
     const data = await response.json();
-    const annotations = data.responses?.[0];
+    const result = data.responses?.[0];
 
-    if (annotations?.error) {
-        throw new Error(`Vision API エラー: ${annotations.error.message}`);
+    if (result?.error) {
+        throw new Error(`Vision API エラー: ${result.error.message}`);
     }
 
-    // fullTextAnnotation（DOCUMENT_TEXT_DETECTION の結果）を優先
-    const fullText = annotations?.fullTextAnnotation?.text || '';
-
-    if (!fullText && annotations?.textAnnotations?.length > 0) {
-        // フォールバック: textAnnotations[0].description に全テキスト
-        return annotations.textAnnotations[0].description;
+    const fullText = result?.fullTextAnnotation?.text || '';
+    if (!fullText && result?.textAnnotations?.length > 0) {
+        const text = result.textAnnotations[0].description;
+        console.log(`Vision API OCR完了: ${text.length}文字`);
+        if (options.withAnnotations) {
+            return { text, annotations: result.textAnnotations.slice(1) };
+        }
+        return text;
     }
 
     console.log(`Vision API OCR完了: ${fullText.length}文字`);
+
+    if (options.withAnnotations) {
+        // textAnnotations[0]は全文、[1]以降が個別単語+座標
+        const wordAnnotations = result?.textAnnotations?.slice(1) || [];
+        return { text: fullText, annotations: wordAnnotations };
+    }
+
     return fullText;
 }

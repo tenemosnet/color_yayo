@@ -3,6 +3,8 @@
  * 弥生販売の得意先リストから顧客情報を取得
  */
 
+import { getDomainToNameMapping } from '../registry.js';
+
 const STORAGE_KEY = 'wholesaleCustomerMaster';
 
 // 顧客マスタデータ（メモリキャッシュ）
@@ -56,7 +58,8 @@ export function parseCustomerMasterCSV(csvText) {
         address1: findColumnIndex(headers, '住所１'),
         tantosha: findColumnIndex(headers, '担当者'),
         tankaSyurui: findColumnIndex(headers, '単価種類'),
-        torihikiKubun: findColumnIndex(headers, '取引区分')
+        torihikiKubun: findColumnIndex(headers, '取引区分'),
+        email: findColumnIndex(headers, 'メールアドレス')
     };
 
     console.log('カラムインデックス:', indices);
@@ -83,7 +86,8 @@ export function parseCustomerMasterCSV(csvText) {
                 name: name,
                 address1: fields[indices.address1],
                 tantosha: fields[indices.tantosha],
-                tankaSyurui: fields[indices.tankaSyurui]
+                tankaSyurui: fields[indices.tankaSyurui],
+                torihikiKubun: fields[indices.torihikiKubun]
             });
             debugCount++;
         }
@@ -101,9 +105,11 @@ export function parseCustomerMasterCSV(csvText) {
         const tankaSyurui = (fields[indices.tankaSyurui] || '').trim();
         const priceType = parsePriceType(tankaSyurui);
 
-        // 取引区分（"掛売", "現金", "都度請求", "サンプル" → 1, 2, 3, 4）
+        // 取引区分（"掛売"→1, "現金"→2, "都度請求"/"サンプル"→3, その他→4）
         const torihikiKubunStr = (fields[indices.torihikiKubun] || '').trim();
         const torihikiKubun = parseTorihikiKubun(torihikiKubunStr);
+
+        const email = (fields[indices.email] || '').trim().toLowerCase();
 
         customerMap.set(code, {
             code,
@@ -113,7 +119,8 @@ export function parseCustomerMasterCSV(csvText) {
             tantosha,
             tankaSyurui,
             priceType,  // 1, 2, or 3
-            torihikiKubun  // 1, 2, 3, or 4
+            torihikiKubun,  // 1, 2, 3, or 4
+            email
         });
     }
 
@@ -209,8 +216,8 @@ function parseTorihikiKubun(torihikiKubunStr) {
     if (!torihikiKubunStr) return 1;
 
     if (torihikiKubunStr.includes('現金') || torihikiKubunStr.includes('2') || torihikiKubunStr.includes('２')) return 2;
-    if (torihikiKubunStr.includes('都度') || torihikiKubunStr.includes('3') || torihikiKubunStr.includes('３')) return 3;
-    if (torihikiKubunStr.includes('サンプル') || torihikiKubunStr.includes('4') || torihikiKubunStr.includes('４')) return 4;
+    if (torihikiKubunStr.includes('都度') || torihikiKubunStr.includes('サンプル') || torihikiKubunStr.includes('3') || torihikiKubunStr.includes('３')) return 3;
+    if (torihikiKubunStr.includes('4') || torihikiKubunStr.includes('４')) return 4;
     return 1;  // デフォルト: 掛売
 }
 
@@ -313,13 +320,9 @@ export function findCustomerByName(searchName) {
 
 /**
  * ドメインキーワード→日本語名のマッピング
- * ローマ字ドメインから日本語会社名を検索するため
+ * レジストリから自動生成（取引先追加時はregistry.jsを更新）
  */
-const domainToNameMapping = {
-    'yatsuha': 'やつは',
-    'yamazen': '山善',
-    // 他のドメイン→日本語名の対応を追加
-};
+const domainToNameMapping = getDomainToNameMapping();
 
 /**
  * メールドメインで顧客を検索
@@ -362,6 +365,45 @@ export function findCustomerByDomain(domain) {
 
     console.log('ドメインで顧客が見つかりませんでした:', domain);
     return null;
+}
+
+/**
+ * メールアドレスで顧客を検索
+ * @param {string} emailAddress - メールアドレス（例: "ayako@369ism.net"）
+ * @returns {Object|null} マッチした顧客情報
+ */
+export function findCustomerByEmail(emailAddress) {
+    const master = loadCustomerMaster();
+    if (!master || !emailAddress) return null;
+
+    const normalizedEmail = emailAddress.toLowerCase().replace(/[<>]/g, '').trim();
+    console.log('メールアドレス検索:', normalizedEmail);
+
+    // 全マッチを収集
+    const matches = [];
+    for (const [code, customer] of master) {
+        if (customer.email && customer.email === normalizedEmail) {
+            if (customer.name.includes('×')) continue;
+            matches.push(customer);
+        }
+    }
+
+    if (matches.length === 0) {
+        console.log('メールアドレスで顧客が見つかりませんでした:', normalizedEmail);
+        return null;
+    }
+
+    // 複数マッチ時: 担当者コードが0または01（卸登録済み）を優先
+    if (matches.length > 1) {
+        const wholesale = matches.find(c => c.tantosha === '0' || c.tantosha === '01');
+        if (wholesale) {
+            console.log(`顧客マッチ（メールアドレス・卸優先）: ${normalizedEmail} → ${wholesale.name} → ${wholesale.code}（${matches.length}件中、担当者=${wholesale.tantosha}、取引区分=${wholesale.torihikiKubun}）`);
+            return wholesale;
+        }
+    }
+
+    console.log('顧客マッチ（メールアドレス）:', normalizedEmail, '→', matches[0].name, '→', matches[0].code);
+    return matches[0];
 }
 
 /**
@@ -437,12 +479,26 @@ export function loadCustomerMasterFile(file) {
             return;
         }
 
-        // CSVファイルの場合
+        // CSVファイルの場合（UTF-8 / Shift-JIS自動判定）
         console.log('CSVファイルとして処理');
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const customerMap = parseCustomerMasterCSV(e.target.result);
+                let csvText;
+                const bytes = new Uint8Array(e.target.result);
+
+                // encoding.jsが利用可能な場合、エンコーディングを自動検出
+                if (typeof Encoding !== 'undefined') {
+                    const detected = Encoding.detect(bytes);
+                    console.log('顧客マスタCSVエンコーディング検出:', detected);
+                    const unicodeArray = Encoding.convert(bytes, { to: 'UNICODE', from: detected });
+                    csvText = Encoding.codeToString(unicodeArray);
+                } else {
+                    // フォールバック: UTF-8として読み込み
+                    csvText = new TextDecoder('utf-8').decode(bytes);
+                }
+
+                const customerMap = parseCustomerMasterCSV(csvText);
                 saveCustomerMaster(customerMap);
                 resolve({
                     count: customerMap.size,
@@ -456,7 +512,7 @@ export function loadCustomerMasterFile(file) {
         reader.onerror = () => {
             reject(new Error('ファイルの読み込みに失敗しました'));
         };
-        reader.readAsText(file, 'UTF-8');
+        reader.readAsArrayBuffer(file);
     });
 }
 

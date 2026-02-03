@@ -260,6 +260,77 @@ export function getProductName(code) {
 }
 
 /**
+ * テキストを正規化（検索用）
+ * 全角数字→半角、ℓ→リットル、L/l→リットル等
+ * @param {string} text
+ * @returns {string}
+ */
+function normalizeForSearch(text) {
+    return text
+        .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+        .replace(/[ℓＬｌ]/g, 'リットル')
+        .replace(/(\d)\s*[Ll]\b/g, '$1リットル')
+        .replace(/[　\s]+/g, '')
+        .toLowerCase();
+}
+
+/**
+ * 商品名キーワード検索
+ * テキストからキーワードを抽出し、商品マスタ内で全キーワードに一致する商品を返す
+ * @param {string} searchText - 検索テキスト（例: "大豆 酵素水 5リットル"）
+ * @returns {Array<Object>} マッチした商品配列 [{code, name, score}]
+ */
+export function searchProductsByText(searchText) {
+    const master = loadProductMaster();
+    if (!master) return [];
+
+    const normalizedSearch = normalizeForSearch(searchText);
+    const results = [];
+
+    // 検索テキストからキーワードを抽出（ループ外で1回だけ）
+    const keywords = searchText
+        .replace(/[、，,。．.・（）()「」\s　]+/g, ' ')
+        .replace(/^お/g, '')       // 先頭の「お」（お米→米）
+        .replace(/([^\s])と([^\s])/g, '$1 $2')  // 「AとB」→「A B」
+        .replace(/([^\s])の([^\s])/g, '$1 $2')  // 「AのB」→「A B」
+        .trim()
+        .split(/\s+/)
+        .map(k => normalizeForSearch(k))
+        .filter(k => k.length > 1);  // 1文字のキーワードは除外
+
+    for (const [code, product] of master) {
+        const normalizedName = normalizeForSearch(product.name);
+
+        // 方向1: キーワード → 商品名に含まれるか
+        let score = 0;
+        if (keywords.length > 0) {
+            const matchCount = keywords.filter(kw => normalizedName.includes(kw)).length;
+            if (matchCount >= Math.ceil(keywords.length / 2)) {
+                score = matchCount;
+            }
+        }
+
+        // 方向2: 商品名が検索テキストに含まれるか（逆方向マッチ）
+        // 例: 検索「ポケットピッコロお願いします」に商品名「ポケットピッコロ」が含まれる
+        if (score === 0 && normalizedName.length >= 3 && normalizedSearch.includes(normalizedName)) {
+            score = 10;  // 完全包含は高スコア
+        }
+
+        if (score > 0) {
+            results.push({
+                code: product.code,
+                name: product.name,
+                score: score
+            });
+        }
+    }
+
+    // スコア降順（多くのキーワードにマッチした商品を優先）
+    results.sort((a, b) => b.score - a.score);
+    return results;
+}
+
+/**
  * 商品マスタをクリア
  */
 export function clearProductMaster() {

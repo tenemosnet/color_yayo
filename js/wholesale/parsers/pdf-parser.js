@@ -185,7 +185,7 @@ function extractOrderedProducts(text) {
  * @param {string} text - 正規化されたテキスト
  * @returns {Array} 商品リスト
  */
-function parseOrderTable(text) {
+export function parseOrderTable(text) {
     const products = [];
     const processedCodes = new Set();
 
@@ -249,6 +249,7 @@ function parseOrderTable(text) {
 
         // パターンマッチング：価格2つ → 卸単位 → 数量？
         let quantity = null;
+        let lotSize = null;
 
         // 数字列から「小売価格, 卸価格, 卸単位, 数量」のパターンを探す
         for (let i = 0; i < parsedNumbers.length - 2; i++) {
@@ -267,6 +268,7 @@ function parseOrderTable(text) {
                     // 注文数量は通常 1-999
                     if (n4 > 0 && n4 < 1000) {
                         quantity = n4;
+                        lotSize = n3;
                         console.log(`  パターン1検出: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${n4}`);
                         break;
                     }
@@ -274,7 +276,30 @@ function parseOrderTable(text) {
             }
         }
 
-        // フォールバック: 低価格商品用（800, 560, 6, 6 のようなケース）
+        // パターン2: ヒカルランド形式 [卸価格, 数量, 単位, 金額]
+        // 例: 1694, 12, 12, 20328 → 金額 = 卸価格 × 数量 (1694 * 12 = 20328)
+        if (quantity === null && parsedNumbers.length >= 4) {
+            for (let i = 0; i < parsedNumbers.length - 3; i++) {
+                const price = parsedNumbers[i];      // 卸価格
+                const qty = parsedNumbers[i + 1];    // 数量
+                const unit = parsedNumbers[i + 2];   // 単位
+                const amount = parsedNumbers[i + 3]; // 金額
+
+                // 条件: 卸価格 >= 100, 数量 > 0 かつ < 1000, 金額 ≒ 卸価格 × 数量 (±10%許容)
+                if (price >= 100 && qty > 0 && qty < 1000 && unitCandidates.includes(unit)) {
+                    const expectedAmount = price * qty;
+                    const tolerance = expectedAmount * 0.1;
+                    if (Math.abs(amount - expectedAmount) <= tolerance) {
+                        quantity = qty;
+                        lotSize = unit;
+                        console.log(`  パターン2検出（ヒカルランド形式）: 卸=${price}, 数量=${qty}, 単位=${unit}, 金額=${amount}`);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // パターン3: 低価格商品用（800, 560, 6, 6 のようなケース）
         if (quantity === null && parsedNumbers.length >= 4) {
             for (let i = 0; i < parsedNumbers.length - 3; i++) {
                 const n1 = parsedNumbers[i];
@@ -285,7 +310,8 @@ function parseOrderTable(text) {
                 // 低価格商品: 小売 >= 100, 卸 < 小売, 卸単位は小さい数字
                 if (n1 >= 100 && n2 < n1 && n2 > 0 && unitCandidates.includes(n3) && n4 > 0 && n4 < 1000) {
                     quantity = n4;
-                    console.log(`  パターン2検出（低価格）: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${n4}`);
+                    lotSize = n3;
+                    console.log(`  パターン3検出（低価格）: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${n4}`);
                     break;
                 }
             }
@@ -296,7 +322,8 @@ function parseOrderTable(text) {
             products.push({
                 code: code,
                 quantity: quantity,
-                unit: ''
+                unit: '',
+                lotSize: lotSize
             });
             processedCodes.add(code);
             console.log(`注文検出: コード=${code}, 数量=${quantity}`);
@@ -306,19 +333,3 @@ function parseOrderTable(text) {
     return products;
 }
 
-/**
- * 日付文字列をYYYY-MM-DD形式に変換
- * @param {string} dateStr - YYYYMMDD形式の日付
- * @returns {string} YYYY-MM-DD形式
- */
-export function formatDateForInput(dateStr) {
-    if (!dateStr || dateStr.length !== 8) {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
-}

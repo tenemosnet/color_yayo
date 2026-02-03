@@ -5,7 +5,9 @@
   "main": "index.html",
   "scripts": {
     "start": "npx http-server -p 8000 -o",
-    "dev": "npx http-server -p 8000 -o"
+    "dev": "npx http-server -p 8000 -o",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "colorme",
@@ -16,5 +18,9 @@
   "license": "ISC",
   "dependencies": {
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "encoding-japanese": "^2.2.0",
+    "vitest": "^4.0.18"
   }
 }
