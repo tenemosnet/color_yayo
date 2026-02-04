@@ -51,7 +51,8 @@ export function convertToYayoi(orders, settings) {
         let rowCode = 1;
 
         // 決済方法から納入コードを決定
-        const isCOD = order.paymentMethod.includes('代引');
+        // 決済方法が「代引き」、または決済手数料が設定されている場合（カラーミーで代引きに変更されたケース）
+        const isCOD = order.paymentMethod.includes('代引') || (order.paymentFee > 0);
         const nounyuCode = isCOD ? YAYOI_FORMAT.DEFAULT_NOUNYU_CODE_COD : YAYOI_FORMAT.DEFAULT_NOUNYU_CODE_BANK;
 
         // 購入者名を取得
@@ -131,9 +132,11 @@ export function convertToYayoi(orders, settings) {
 
         // 代引き手数料を追加
         if (isCOD) {
+            // CSVの決済手数料があればそちらを優先（カラーミーで変更されたケース）
+            // なければ従来通り自動計算
             const itemsTotal = order.items.reduce((sum, item) => sum + item.subtotal, 0);
             const paymentTotal = itemsTotal + order.shippingFee;
-            const codFee = calculateCODFee(paymentTotal);
+            const codFee = order.paymentFee > 0 ? order.paymentFee : calculateCODFee(paymentTotal);
 
             const row = createRow({
                 denpyoDate,

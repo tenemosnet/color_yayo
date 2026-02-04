@@ -158,13 +158,14 @@ export function displayOrders(orders) {
         const itemsTotal = order.items.reduce((sum, item) => sum + item.subtotal, 0);
 
         // 代引きは青色表示 + デフォルトチェック
-        const isCOD = order.paymentMethod.includes('代引');
+        // 決済方法が「代引き」、または決済手数料が設定されている場合
+        const isCOD = order.paymentMethod.includes('代引') || (order.paymentFee > 0);
 
-        // 代引き手数料を計算（config.jsの関数を使用）
+        // 代引き手数料（CSVの決済手数料を優先、なければ自動計算）
         let codFee = 0;
         if (isCOD) {
             const paymentTotal = itemsTotal + order.shippingFee;
-            codFee = calculateCODFee(paymentTotal);
+            codFee = order.paymentFee > 0 ? order.paymentFee : calculateCODFee(paymentTotal);
         }
 
         // 売上合計（商品小計 + 送料 + 代引き手数料 - 割引）
