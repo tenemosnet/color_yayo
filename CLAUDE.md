@@ -21,8 +21,8 @@ npx vitest run test/converter.test.js  # 単一テスト実行
 
 ### エントリーポイント
 
-- **index.html** - 統合UI（小売/卸売タブ切替）、共通マスタ読込エリア
-- **retail.html** / **wholesale.html** - index.htmlへのリダイレクト（後方互換性）
+- **index.html** - 統合UI（小売/卸売タブ切替）、共通マスタ読込エリア（アコーディオン式）
+- **css/styles.css** - 全スタイル一元管理（小売・卸売・共通マスタ・タブ等）
 
 ### モジュール構成
 
@@ -34,7 +34,7 @@ js/
 │   ├── customer-master.js     # 共通得意先マスタ（LocalStorage: customerMaster）
 │   └── product-master.js      # 共通商品マスタ（LocalStorage: productMaster）、単価区分別価格・軽減税率対応
 ├── retail/                    # カラーミー → 弥生小売変換
-│   ├── main.js                # イベント処理、共通マスタ自動読込
+│   ├── main.js                # イベント処理、共通マスタ自動読込・双方向同期
 │   ├── parser.js              # Shift-JIS CSV・Excelパース
 │   ├── matcher.js             # 顧客マッチング: メール → 電話 → 氏名の優先順
 │   ├── converter.js           # 弥生59フィールドTSV生成 + Shift-JISダウンロード
