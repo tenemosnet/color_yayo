@@ -6,6 +6,27 @@
 import { saveToLocalStorage } from '../common/storage.js';
 
 /**
+ * カラーミー型番から弥生商品コードを抽出
+ * 半角数字のみならそのまま、プレフィックス付き（例: "LM共通-1959"）なら末尾の数字部分を抽出
+ * @param {string} rawCode - カラーミーCSVの型番
+ * @returns {string} 正規化された商品コード
+ */
+function normalizeProductCode(rawCode) {
+    const code = (rawCode || '').trim();
+    if (!code) return '';
+    // 半角数字のみなら変換不要
+    if (/^\d+$/.test(code)) return code;
+    // 末尾の連続する数字を抽出（例: "LM共通-1959" → "1959"）
+    const match = code.match(/(\d+)$/);
+    if (match) {
+        console.log(`商品コード正規化: "${code}" → "${match[1]}"`);
+        return match[1];
+    }
+    // 数字が含まれない場合はそのまま返す
+    return code;
+}
+
+/**
  * CSVテキストを行に分割（ダブルクォート内の改行を考慮）
  */
 function splitCSVLines(csvText) {
@@ -162,7 +183,7 @@ export function parseColorMeCSV(csvText) {
         
         const order = ordersMap.get(salesId);
         order.items.push({
-            productCode: columns[indices.productCode] || '',
+            productCode: normalizeProductCode(columns[indices.productCode]),
             productName: columns[indices.productName] || '',
             unitPrice: parseFloat(columns[indices.unitPrice]) || 0,
             quantity: parseFloat(columns[indices.quantity]) || 0,
