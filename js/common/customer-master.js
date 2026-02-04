@@ -211,15 +211,15 @@ function parsePriceType(tankaSyurui) {
 
 /**
  * 取引区分文字列から数値を抽出
- * @param {string} torihikiKubunStr - "掛売", "現金", "都度請求", "サンプル"
+ * @param {string} torihikiKubunStr - "掛売", "現金", "サンプル", "都度請求"
  * @returns {number} 1, 2, 3, or 4（デフォルトは1:掛売）
  */
 function parseTorihikiKubun(torihikiKubunStr) {
     if (!torihikiKubunStr) return 1;
 
     if (torihikiKubunStr.includes('現金') || torihikiKubunStr.includes('2') || torihikiKubunStr.includes('２')) return 2;
-    if (torihikiKubunStr.includes('都度') || torihikiKubunStr.includes('サンプル') || torihikiKubunStr.includes('3') || torihikiKubunStr.includes('３')) return 3;
-    if (torihikiKubunStr.includes('4') || torihikiKubunStr.includes('４')) return 4;
+    if (torihikiKubunStr.includes('サンプル') || torihikiKubunStr.includes('3') || torihikiKubunStr.includes('３')) return 3;
+    if (torihikiKubunStr.includes('都度') || torihikiKubunStr.includes('4') || torihikiKubunStr.includes('４')) return 4;
     return 1;  // デフォルト: 掛売
 }
 

@@ -635,7 +635,7 @@ function displayDetectedCustomer(customer) {
                 <tr><td style="width: 100px; color: #666;">得意先コード:</td><td><strong>${customer.code}</strong></td></tr>
                 <tr><td style="color: #666;">名称:</td><td><strong>${customer.name}</strong></td></tr>
                 <tr><td style="color: #666;">担当者:</td><td>${customer.tantosha || '(未設定)'}</td></tr>
-                <tr><td style="color: #666;">取引区分:</td><td>${{1:'掛売',2:'現金',3:'都度請求',4:'サンプル'}[customer.torihikiKubun] || '(不明)'}</td></tr>
+                <tr><td style="color: #666;">取引区分:</td><td>${{1:'掛売',2:'現金',3:'サンプル',4:'都度請求'}[customer.torihikiKubun] || '(不明)'}</td></tr>
                 <tr><td style="color: #666;">単価種類:</td><td>${priceTypeLabel[customer.priceType] || customer.tankaSyurui}</td></tr>
                 <tr><td style="color: #666;">都道府県:</td><td>${customer.prefecture || '(未設定)'}</td></tr>
             </table>
