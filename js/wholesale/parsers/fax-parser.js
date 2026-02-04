@@ -4,7 +4,7 @@
  * 画像ベースのPDF（FAXスキャン）はOCR（Tesseract.js）で文字認識
  */
 
-import { loadProductMaster } from '../common/product-master.js';
+import { loadProductMaster } from '../../common/product-master.js';
 import { hasVisionApiKey, ocrWithVisionApi } from '../common/vision-api.js';
 import { getFaxCustomerCodes } from '../registry.js';
 

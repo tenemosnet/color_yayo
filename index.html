@@ -368,9 +368,29 @@
 
     <!-- 卸売モジュール -->
     <script type="module">
-        import { initWholesale } from './js/wholesale/main.js';
-        document.addEventListener('DOMContentLoaded', () => {
-            initWholesale();
+        import('./js/wholesale/main.js').then(({ initWholesale }) => {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => initWholesale());
+            } else {
+                initWholesale();
+            }
+            console.log('[wholesale] モジュール読込成功');
+        }).catch(e => {
+            console.error('[wholesale] モジュール読込エラー:', e);
+            const show = () => {
+                const status = document.getElementById('wholesaleStatus');
+                if (status) {
+                    status.textContent = '⚠️ 卸売モジュール読込エラー: ' + e.message;
+                    status.style.display = 'block';
+                    status.style.color = '#c62828';
+                    status.style.background = '#ffebee';
+                }
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', show);
+            } else {
+                show();
+            }
         });
     </script>
 
