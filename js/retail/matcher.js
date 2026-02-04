@@ -11,38 +11,87 @@ function cleanPhone(phone) {
 }
 
 /**
+ * 照合済み顧客の情報差異を検出
+ * @param {Object} colormeCustomer - カラーミーの顧客情報
+ * @param {Object} yayoiCustomer - 弥生販売の顧客情報
+ * @param {string} matchMethod - 照合方法
+ * @returns {Array} - 警告の配列
+ */
+function detectDiscrepancies(colormeCustomer, yayoiCustomer, matchMethod) {
+    const warnings = [];
+
+    // 名前の差異チェック（メールアドレス一致・電話番号一致の両方で実施）
+    const cmName = (colormeCustomer.customerName || '').trim();
+    const yaName = (yayoiCustomer.name || '').trim();
+    if (cmName && yaName && cmName !== yaName) {
+        warnings.push({
+            type: 'name_change',
+            label: '氏名変更の可能性',
+            detail: `カラーミー: ${cmName} / 弥生: ${yaName}`
+        });
+    }
+
+    // 住所の差異チェック（電話番号一致時のみ）
+    if (matchMethod === '電話番号一致') {
+        const cmPref = (colormeCustomer.prefecture || '').trim();
+        const yaPref = (yayoiCustomer.prefecture || '').trim();
+        const cmAddr = `${cmPref}${(colormeCustomer.address || '').trim()}`;
+        const yaAddr = (yayoiCustomer.address1 || '').trim();
+
+        if (cmAddr && yaAddr) {
+            if ((cmPref && yaPref && cmPref !== yaPref) ||
+                (cmAddr.substring(0, 8) !== yaAddr.substring(0, 8))) {
+                warnings.push({
+                    type: 'address_change',
+                    label: '住所変更の可能性',
+                    detail: `カラーミー: ${cmAddr.substring(0, 20)} / 弥生: ${yaAddr.substring(0, 20)}`
+                });
+            }
+        }
+    }
+
+    return warnings;
+}
+
+/**
  * カラーミーの顧客と弥生販売の顧客を照合
  * @param {Object} colormeCustomer - カラーミーの顧客情報
  * @param {Array} yayoiCustomers - 弥生販売の顧客リスト
- * @returns {Object|null} - マッチ結果（customer, method）またはnull
+ * @returns {Object|null} - マッチ結果（customer, method, warnings）またはnull
  */
 export function matchCustomer(colormeCustomer, yayoiCustomers) {
     // 優先度1: メールアドレス
     if (colormeCustomer.email) {
-        const match = yayoiCustomers.find(y => 
+        const match = yayoiCustomers.find(y =>
             y.email && y.email.toLowerCase() === colormeCustomer.email.toLowerCase()
         );
-        if (match) return { customer: match, method: 'メールアドレス一致' };
+        if (match) {
+            const warnings = detectDiscrepancies(colormeCustomer, match, 'メールアドレス一致');
+            return { customer: match, method: 'メールアドレス一致', warnings };
+        }
     }
-    
+
     // 優先度2: 電話番号（ハイフンなしで比較）
     const colormePhone = cleanPhone(colormeCustomer.phone || colormeCustomer.mobile || '');
-    
+
     if (colormePhone) {
-        const match = yayoiCustomers.find(y => 
+        const match = yayoiCustomers.find(y =>
             y.phone && cleanPhone(y.phone) === colormePhone
         );
-        if (match) return { customer: match, method: '電話番号一致' };
+        if (match) {
+            const warnings = detectDiscrepancies(colormeCustomer, match, '電話番号一致');
+            return { customer: match, method: '電話番号一致', warnings };
+        }
     }
-    
+
     // 優先度3: 顧客名（完全一致）
     if (colormeCustomer.customerName) {
-        const match = yayoiCustomers.find(y => 
+        const match = yayoiCustomers.find(y =>
             y.name && y.name === colormeCustomer.customerName
         );
-        if (match) return { customer: match, method: '顧客名一致' };
+        if (match) return { customer: match, method: '顧客名一致', warnings: [] };
     }
-    
+
     // 照合失敗
     return null;
 }
@@ -127,35 +176,49 @@ export function createNewCustomersList(colormeOrders, startCode) {
 export function performCustomerMatching(colormeOrders, yayoiCustomers) {
     let existingCount = 0;
     let newCount = 0;
-    
+    const allWarnings = [];
+
     // 各受注に対して顧客照合
     colormeOrders.forEach(order => {
         const match = matchCustomer(order, yayoiCustomers);
-        
+
         if (match) {
             // 既存顧客
             order.matchedCustomer = match.customer;
             order.matchMethod = match.method;
+            order.matchWarnings = match.warnings || [];
             order.tokuisakiCode = match.customer.customerCode;
             existingCount++;
+
+            // 警告がある場合に集約
+            if (match.warnings && match.warnings.length > 0) {
+                allWarnings.push({
+                    salesId: order.salesId,
+                    customerName: order.customerName,
+                    tokuisakiCode: match.customer.customerCode,
+                    warnings: match.warnings
+                });
+            }
         } else {
             // 新規顧客
+            order.matchWarnings = [];
             newCount++;
         }
     });
-    
+
     // 最大顧客コードを取得
     const maxCode = getMaxCustomerCode(yayoiCustomers);
     const nextCode = maxCode + 1;
-    
+
     // 新規顧客リストを作成
     const newCustomersList = createNewCustomersList(colormeOrders, nextCode);
-    
+
     return {
         existingCount,
         newCount,
         maxCode,
         nextCode,
-        newCustomersList
+        newCustomersList,
+        warnings: allWarnings
     };
 }

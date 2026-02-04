@@ -57,7 +57,9 @@ export function parseCustomerMasterCSV(csvText) {
     const indices = {
         code: findColumnIndex(headers, 'コード'),
         name: findColumnIndex(headers, '名称'),
+        furigana: findColumnIndex(headers, 'フリガナ'),
         address1: findColumnIndex(headers, '住所１'),
+        phone: findColumnIndex(headers, 'TEL'),
         tantosha: findColumnIndex(headers, '担当者'),
         tankaSyurui: findColumnIndex(headers, '単価種類'),
         torihikiKubun: findColumnIndex(headers, '取引区分'),
@@ -96,9 +98,15 @@ export function parseCustomerMasterCSV(csvText) {
 
         if (!code || !name) continue;
 
+        // フリガナ
+        const furigana = indices.furigana !== -1 ? (fields[indices.furigana] || '').trim() : '';
+
         // 住所から都道府県を抽出
         const address1 = (fields[indices.address1] || '').trim();
         const prefecture = extractPrefecture(address1);
+
+        // 電話番号
+        const phone = indices.phone !== -1 ? (fields[indices.phone] || '').trim() : '';
 
         // 担当者コード
         const tantosha = (fields[indices.tantosha] || '').trim();
@@ -116,8 +124,10 @@ export function parseCustomerMasterCSV(csvText) {
         customerMap.set(code, {
             code,
             name,
+            furigana,
             address1,
             prefecture,
+            phone,
             tantosha,
             tankaSyurui,
             priceType,  // 1, 2, or 3

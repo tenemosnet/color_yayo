@@ -37,9 +37,11 @@ function loadCustomersFromCommonMaster() {
         customers.push({
             customerCode: customer.code,
             name: customer.name,
-            furigana: '',
-            phone: '',
-            email: customer.email || ''
+            furigana: customer.furigana || '',
+            phone: customer.phone || '',
+            email: customer.email || '',
+            address1: customer.address1 || '',
+            prefecture: customer.prefecture || ''
         });
     }
 
@@ -372,6 +374,18 @@ function handleCustomerMatching() {
 
     const result = performCustomerMatching(colormeOrders, yayoiCustomers);
     newCustomersList = result.newCustomersList;
+
+    // 警告がある場合の通知
+    if (result.warnings && result.warnings.length > 0) {
+        const warningDetails = result.warnings.map(w =>
+            `${w.customerName}(${w.tokuisakiCode}): ${w.warnings.map(ww => ww.label).join(', ')}`
+        ).join(' / ');
+        console.log(`⚡ 顧客情報変更の可能性: ${result.warnings.length}件`);
+        result.warnings.forEach(w => {
+            w.warnings.forEach(ww => console.log(`  - ${w.customerName}: ${ww.detail}`));
+        });
+        showStatus(`⚡ ${result.warnings.length}件の顧客情報に変更の可能性があります（受注一覧の「要確認」を確認してください）`, 'info');
+    }
 
     // サマリー表示
     displaySummary({

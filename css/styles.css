@@ -666,6 +666,31 @@ input[type="file"] {
     background: #ffe8a1 !important;
 }
 
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.status-badge.existing {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-badge.new {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.warning {
+    background: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffb74d;
+    cursor: help;
+}
+
 .customer-status-existing {
     display: inline-block;
     padding: 4px 12px;

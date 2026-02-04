@@ -184,9 +184,17 @@ export function displayOrders(orders) {
             });
         }
 
-        const statusBadge = order.matchedCustomer ?
-            '<span class="status-badge existing">✅ 既存</span>' :
-            '<span class="status-badge new">⚠️ 新規</span>';
+        let statusBadge;
+        if (order.matchedCustomer) {
+            if (order.matchWarnings && order.matchWarnings.length > 0) {
+                const warningTitles = order.matchWarnings.map(w => `${w.label}: ${w.detail}`).join('&#10;');
+                statusBadge = `<span class="status-badge warning" title="${warningTitles}">⚡ 要確認</span>`;
+            } else {
+                statusBadge = '<span class="status-badge existing">✅ 既存</span>';
+            }
+        } else {
+            statusBadge = '<span class="status-badge new">⚠️ 新規</span>';
+        }
 
         const rowClass = order.matchedCustomer ? 'existing-customer' : 'new-customer';
 
