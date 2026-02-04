@@ -107,7 +107,7 @@ export function parseCustomerMasterCSV(csvText) {
         const tankaSyurui = (fields[indices.tankaSyurui] || '').trim();
         const priceType = parsePriceType(tankaSyurui);
 
-        // 取引区分（"掛売"→1, "現金"→2, "都度請求"/"サンプル"→3, その他→4）
+        // 取引区分（"掛売"→1, "現金"→2, "サンプル"→3, "都度請求"→4）
         const torihikiKubunStr = (fields[indices.torihikiKubun] || '').trim();
         const torihikiKubun = parseTorihikiKubun(torihikiKubunStr);
 
