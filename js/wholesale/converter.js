@@ -27,7 +27,7 @@ export function convertToYayoiFormat(products, settings) {
         shippingCode = null,
         shippingUnitPrice = 0,
         shippingName = '送料',
-        torihikiKubun = 2,      // 取引区分（1:掛売, 2:現金, 3:都度請求, 4:サンプル）
+        torihikiKubun = 2,      // 取引区分（1:掛売, 2:現金, 3:サンプル, 4:都度請求）
         nounyuCode = '003'      // 納入コード
     } = settings;
 
@@ -133,7 +133,7 @@ function createRow(data) {
         data.denpyoDate,                // 4: 伝票日付
         data.denpyoNo,                  // 5: 伝票番号
         24,                             // 6: 伝票区分
-        data.torihikiKubun || 2,        // 7: 取引区分（1:掛売, 2:現金, 3:都度請求, 4:サンプル）
+        data.torihikiKubun || 2,        // 7: 取引区分（1:掛売, 2:現金, 3:サンプル, 4:都度請求）
         5,                              // 8: 税転嫁
         1,                              // 9: 金額端数処理
         1,                              // 10: 税端数処理

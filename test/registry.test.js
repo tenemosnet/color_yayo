@@ -40,9 +40,13 @@ describe('getNounyuCodeByCustomer', () => {
         expect(getNounyuCodeByCustomer('000034', 2)).toBe('003');
     });
 
-    it('都度請求（取引区分3）→ 002', () => {
-        expect(getNounyuCodeByCustomer('000913', 3)).toBe('002');
-        expect(getNounyuCodeByCustomer('999999', 3)).toBe('002');
+    it('都度請求（取引区分4）→ 002', () => {
+        expect(getNounyuCodeByCustomer('000913', 4)).toBe('002');
+        expect(getNounyuCodeByCustomer('999999', 4)).toBe('002');
+    });
+
+    it('サンプル（取引区分3）→ 空白', () => {
+        expect(getNounyuCodeByCustomer('000913', 3)).toBe('');
     });
 
     it('取引区分なし → 空白', () => {

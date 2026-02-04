@@ -63,7 +63,7 @@ export const VENDORS = {
 export function getNounyuCodeByCustomer(customerCode, torihikiKubun) {
     // 取引区分ベースで納入コードを決定
     if (torihikiKubun === 2) return '003';  // 現金 → ゆうちょ振込済
-    if (torihikiKubun === 3) return '002';  // 都度請求（弥生マスタ上「サンプル」表記） → 先行出荷
+    if (torihikiKubun === 4) return '002';  // 都度請求 → 先行出荷
 
     // 取引区分1（掛売）: 山善のみ020、他は030
     if (torihikiKubun === 1) {
@@ -71,7 +71,7 @@ export function getNounyuCodeByCustomer(customerCode, torihikiKubun) {
         return '030';  // 月末締め
     }
 
-    // 想定外の取引区分 → 空白
+    // 取引区分3（サンプル）・その他 → 空白
     return '';
 }
 

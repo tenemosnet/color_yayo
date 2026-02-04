@@ -75,7 +75,7 @@ describe('determineNounyuCode', () => {
     it('取引区分に基づいて納入コードを返す', () => {
         expect(determineNounyuCode({ code: '000034', torihikiKubun: 1 })).toBe('020');
         expect(determineNounyuCode({ code: '001568', torihikiKubun: 1 })).toBe('030');
-        expect(determineNounyuCode({ code: '000913', torihikiKubun: 3 })).toBe('002');
+        expect(determineNounyuCode({ code: '000913', torihikiKubun: 4 })).toBe('002');
         expect(determineNounyuCode({ code: '999999', torihikiKubun: 2 })).toBe('003');
     });
 
