@@ -27,12 +27,22 @@ export function parseEmlFile(emlContent) {
     // Organization（組織名）を抽出
     const organization = extractOrganization(headerPart);
 
-    // Content-Transfer-Encodingを確認
+    // Content-TypeとContent-Transfer-Encodingを確認
+    const contentType = extractHeader(headerPart, 'Content-Type') || '';
     const encoding = extractHeader(headerPart, 'Content-Transfer-Encoding');
 
     // 本文をデコード
     let body = bodyPart;
-    if (encoding && encoding.toLowerCase() === 'base64') {
+
+    // multipart メールの場合: text/plain パートを抽出してデコード
+    const boundaryMatch = contentType.match(/boundary="?([^"\r\n;]+)"?/i);
+    if (boundaryMatch) {
+        const boundary = boundaryMatch[1];
+        const extracted = extractTextPlainFromMultipart(bodyPart, boundary);
+        if (extracted) {
+            body = extracted;
+        }
+    } else if (encoding && encoding.toLowerCase() === 'base64') {
         body = decodeBase64(bodyPart);
     } else if (encoding && encoding.toLowerCase() === 'quoted-printable') {
         body = decodeQuotedPrintable(bodyPart);
@@ -46,6 +56,42 @@ export function parseEmlFile(emlContent) {
         fromDomain: fromDomain,
         organization: organization
     };
+}
+
+/**
+ * multipartメールからtext/plainパートを抽出・デコード
+ * @param {string} bodyPart - multipartボディ全体
+ * @param {string} boundary - MIMEバウンダリ文字列
+ * @returns {string|null} デコード済みテキスト（見つからない場合null）
+ */
+function extractTextPlainFromMultipart(bodyPart, boundary) {
+    const parts = bodyPart.split(new RegExp(`--${escapeRegex(boundary)}`));
+
+    for (const part of parts) {
+        if (part.trim().startsWith('--') || !part.trim()) continue;
+
+        const headerEndIndex = part.search(/\r?\n\r?\n/);
+        if (headerEndIndex === -1) continue;
+
+        const partHeader = part.substring(0, headerEndIndex);
+        const partBody = part.substring(headerEndIndex).replace(/^\r?\n\r?\n/, '');
+
+        // text/plain パートを探す
+        const ctMatch = partHeader.match(/Content-Type:\s*text\/plain/i);
+        if (!ctMatch) continue;
+
+        // Content-Transfer-Encoding を確認
+        const encMatch = partHeader.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i);
+        const enc = encMatch ? encMatch[1].trim().toLowerCase() : '';
+
+        if (enc === 'base64') {
+            return decodeBase64(partBody);
+        } else if (enc === 'quoted-printable') {
+            return decodeQuotedPrintable(partBody);
+        }
+        return partBody;
+    }
+    return null;
 }
 
 /**

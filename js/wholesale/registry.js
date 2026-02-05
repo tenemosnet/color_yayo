@@ -53,8 +53,8 @@ export const VENDORS = {
         japaneseName: "MOTHER'S・I"
     },
     ABE_NATURAL: {
-        code: '000000',
-        nounyuCode: '030',
+        code: '005138',
+        nounyuCode: '003',
         detect: { type: 'eml' },
         domain: 'abenatural',
         japaneseName: 'アベナチュラル'
