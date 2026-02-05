@@ -303,10 +303,11 @@ function parseOptimalLifePdf(text) {
         }
     }
 
-    // 方法2: コードと数量が同一行にある場合 — 方法1で漏れた商品を補完
+    // 方法2: コードと数量が同一行または次行にある場合 — 方法1で漏れた商品を補完
     // OCR環境差でコードが行単独にならない場合に対応
     const foundCodes = new Set(result.products.map(p => p.code));
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
         const codeMatch = line.match(/\b([12]\d{3})\b/);
         if (!codeMatch) continue;
 
@@ -318,28 +319,59 @@ function parseOptimalLifePdf(text) {
         const afterCode = line.substring(line.indexOf(code) + code.length);
         const beforeRemark = afterCode.split(/※/)[0];
         const numbersInLine = beforeRemark.match(/\b(\d{1,3})\b/g);
+        let quantity = null;
         if (numbersInLine) {
             // 最後の数字を数量として採用（品名中の数字を避ける）
             const num = parseInt(numbersInLine[numbersInLine.length - 1], 10);
             if (num >= 1 && num <= 999) {
-                result.products.push({ code, quantity: num, unit: '' });
-                foundCodes.add(code);
-                console.log(`オプティマル商品検出（同一行補完）: コード=${code}, 数量=${num}`);
+                quantity = num;
             }
+        }
+
+        // 同一行に数量がない場合、次の数行から数量を前方検索
+        // OCRで「1110 Vidaクリーム ノーマルレフィル」と「12」が別行になるケース対応
+        if (quantity === null) {
+            for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+                const nextLine = lines[j].trim();
+                // 次の商品コード行に到達したら中断
+                if (/\b[12]\d{3}\b/.test(nextLine)) break;
+                // 数量候補: 行頭が1〜3桁の数字
+                const qtyMatch = nextLine.match(/^(\d{1,3})(?:\D|$)/);
+                if (qtyMatch) {
+                    const num = parseInt(qtyMatch[1], 10);
+                    if (num >= 1 && num <= 999) {
+                        quantity = num;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (quantity !== null) {
+            result.products.push({ code, quantity, unit: '' });
+            foundCodes.add(code);
+            console.log(`オプティマル商品検出（同一行補完）: コード=${code}, 数量=${quantity}`);
         }
     }
 
     // 方法3: 商品名マッチング — コード読取漏れを品名で補完
     // OCRでコードが誤読（線が細い「0」→「O」等）されても、品名で拾い直す
+    // 偽陽性防止: OCRテキスト内にコードが存在する商品のみ追加（品名だけの一致では追加しない）
     const nameMatched = matchProductsByName(text);
     if (nameMatched.length > 0) {
         const existingCodes = new Set(result.products.map(p => p.code));
+        // OCRテキストからスペース除去版を用意（コード存在チェック用）
+        const noSpaceFullText = text.replace(/\s+/g, '');
         for (const nm of nameMatched) {
-            if (!existingCodes.has(nm.code)) {
-                result.products.push(nm);
-                existingCodes.add(nm.code);
-                console.log(`オプティマル商品検出（品名補完）: コード=${nm.code}, 数量=${nm.quantity}`);
+            if (existingCodes.has(nm.code)) continue;
+            // コードがOCRテキスト内に存在するか確認（偽陽性フィルタ）
+            if (!noSpaceFullText.includes(nm.code)) {
+                console.log(`オプティマル品名補完スキップ（コード未検出）: コード=${nm.code}`);
+                continue;
             }
+            result.products.push(nm);
+            existingCodes.add(nm.code);
+            console.log(`オプティマル商品検出（品名補完）: コード=${nm.code}, 数量=${nm.quantity}`);
         }
     }
 
