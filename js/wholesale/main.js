@@ -169,11 +169,25 @@ function initVisionApiKeyUI() {
     const saveBtn = document.getElementById('saveVisionApiKeyBtn');
     const clearBtn = document.getElementById('clearVisionApiKeyBtn');
     const status = document.getElementById('visionApiKeyStatus');
+    const ocrSection = document.getElementById('ocrSection');
+    const ocrHeader = document.getElementById('ocrSectionHeader');
+    const ocrBody = document.getElementById('ocrSectionBody');
+    const ocrSummary = document.getElementById('ocrSectionSummary');
 
     if (!saveBtn) return;
 
     // 現在の状態を表示
     updateVisionApiKeyStatus();
+
+    // アコーディオン開閉
+    if (ocrHeader && ocrSection && ocrBody) {
+        ocrHeader.addEventListener('click', () => {
+            const isCollapsed = ocrSection.classList.toggle('collapsed');
+            ocrBody.style.display = isCollapsed ? 'none' : 'block';
+            const icon = ocrHeader.querySelector('.ocr-toggle-icon');
+            if (icon) icon.style.transform = isCollapsed ? '' : 'rotate(180deg)';
+        });
+    }
 
     saveBtn.addEventListener('click', () => {
         const key = input.value.trim();
@@ -196,14 +210,26 @@ function initVisionApiKeyUI() {
 
 function updateVisionApiKeyStatus() {
     const status = document.getElementById('visionApiKeyStatus');
-    if (!status) return;
+    const ocrSummary = document.getElementById('ocrSectionSummary');
 
     if (hasVisionApiKey()) {
-        status.textContent = '✅ APIキー設定済み（Google Cloud Vision APIを使用）';
-        status.style.color = '#2e7d32';
+        if (status) {
+            status.textContent = '✅ APIキー設定済み（Google Cloud Vision APIを使用）';
+            status.style.color = '#2e7d32';
+        }
+        if (ocrSummary) {
+            ocrSummary.textContent = '✅ 設定済み';
+            ocrSummary.style.color = '#2e7d32';
+        }
     } else {
-        status.textContent = '未設定（Tesseract.jsで動作）';
-        status.style.color = '#666';
+        if (status) {
+            status.textContent = '未設定（Tesseract.jsで動作）';
+            status.style.color = '#666';
+        }
+        if (ocrSummary) {
+            ocrSummary.textContent = '未設定';
+            ocrSummary.style.color = '#999';
+        }
     }
 }
 

@@ -428,6 +428,14 @@ function handleCustomerMatching() {
     }
 
     showStatus('✅ 顧客照合が完了しました', 'success');
+
+    // 照合結果サマリーへ自動スクロール（結果を視覚的に確認できるように）
+    const summarySection = document.getElementById('summarySection');
+    if (summarySection) {
+        setTimeout(() => {
+            summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
 }
 
 /**

@@ -222,19 +222,27 @@
             <!-- ステータス表示 -->
             <div id="wholesaleStatus" class="wholesale-status" style="display: none;"></div>
 
-            <!-- OCR設定 -->
-            <div class="ocr-section">
-                <h3>🔑 OCR設定（FAX注文書用）</h3>
-                <p style="color: #666; margin-bottom: 10px; font-size: 12px;">
-                    FAX注文書の読取精度向上用。未設定の場合はTesseract.js（低精度）で動作します。
-                </p>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="password" id="visionApiKeyInput" placeholder="Google Cloud Vision APIキー"
-                           style="flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-                    <button id="saveVisionApiKeyBtn" class="wholesale-btn" style="padding: 8px 20px;">保存</button>
-                    <button id="clearVisionApiKeyBtn" class="wholesale-btn secondary" style="padding: 8px 12px;">削除</button>
+            <!-- OCR設定（折り畳み式） -->
+            <div class="ocr-section collapsed" id="ocrSection">
+                <div class="ocr-section-header" id="ocrSectionHeader" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h3 style="margin: 0;">🔑 OCR設定（FAX注文書用）</h3>
+                        <span id="ocrSectionSummary" style="font-size: 12px; color: #666;"></span>
+                    </div>
+                    <span class="ocr-toggle-icon" style="transition: transform 0.2s;">▼</span>
                 </div>
-                <div id="visionApiKeyStatus" style="margin-top: 8px; font-size: 12px; color: #666;"></div>
+                <div class="ocr-section-body" id="ocrSectionBody" style="display: none; margin-top: 15px;">
+                    <p style="color: #666; margin-bottom: 10px; font-size: 12px;">
+                        FAX注文書の読取精度向上用。未設定の場合はTesseract.js（低精度）で動作します。
+                    </p>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="password" id="visionApiKeyInput" placeholder="Google Cloud Vision APIキー"
+                               style="flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+                        <button id="saveVisionApiKeyBtn" class="wholesale-btn" style="padding: 8px 20px;">保存</button>
+                        <button id="clearVisionApiKeyBtn" class="wholesale-btn secondary" style="padding: 8px 12px;">削除</button>
+                    </div>
+                    <div id="visionApiKeyStatus" style="margin-top: 8px; font-size: 12px; color: #666;"></div>
+                </div>
             </div>
 
             <div class="wholesale-section">
