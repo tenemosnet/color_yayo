@@ -329,12 +329,17 @@ function parseOptimalLifePdf(text) {
         }
     }
 
-    // 方法3: 商品名マッチング（フォールバック）
-    if (result.products.length === 0) {
-        console.log('コードベース抽出失敗。商品名マッチングを試行...');
-        const nameMatched = matchProductsByName(text);
-        if (nameMatched.length > 0) {
-            result.products = nameMatched;
+    // 方法3: 商品名マッチング — コード読取漏れを品名で補完
+    // OCRでコードが誤読（線が細い「0」→「O」等）されても、品名で拾い直す
+    const nameMatched = matchProductsByName(text);
+    if (nameMatched.length > 0) {
+        const existingCodes = new Set(result.products.map(p => p.code));
+        for (const nm of nameMatched) {
+            if (!existingCodes.has(nm.code)) {
+                result.products.push(nm);
+                existingCodes.add(nm.code);
+                console.log(`オプティマル商品検出（品名補完）: コード=${nm.code}, 数量=${nm.quantity}`);
+            }
         }
     }
 
