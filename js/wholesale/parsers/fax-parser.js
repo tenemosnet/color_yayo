@@ -375,6 +375,16 @@ function parseOptimalLifePdf(text) {
         }
     }
 
+    // 全方法で集めた商品をOCRテキスト内の出現順にソート（注文書の記載順を再現）
+    if (result.products.length > 1) {
+        const noSpaceText = text.replace(/\s+/g, '');
+        result.products.sort((a, b) => {
+            const posA = noSpaceText.indexOf(a.code);
+            const posB = noSpaceText.indexOf(b.code);
+            return posA - posB;
+        });
+    }
+
     return result;
 }
 
