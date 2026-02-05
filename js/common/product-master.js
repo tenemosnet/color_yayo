@@ -342,8 +342,8 @@ export function searchProductsByText(searchText) {
         }
     }
 
-    // スコア降順（多くのキーワードにマッチした商品を優先）
-    results.sort((a, b) => b.score - a.score);
+    // スコア降順、同スコアなら商品名が短い方を優先（セット商品より単品を優先）
+    results.sort((a, b) => b.score - a.score || a.name.length - b.name.length);
     return results;
 }
 
