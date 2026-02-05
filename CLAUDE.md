@@ -54,7 +54,14 @@ js/
 
 ### 卸売レジストリパターン
 
-取引先ごとの設定は `js/wholesale/registry.js` の `VENDORS` オブジェクトで一元管理。各エントリに得意先コード、検出方法（`eml`/`pdf-text`/`fax`）、ドメイン情報を定義。新規取引先追加時はレジストリにエントリを追加し、テスト（`test/registry.test.js`）のVENDORS数を更新する。
+取引先ごとの設定は `js/wholesale/registry.js` の `VENDORS` オブジェクトで一元管理。各エントリに得意先コード、検出方法（`eml`/`pdf-text`/`fax`）、ドメイン情報を定義。
+
+**卸売取引先の追加手順**:
+1. `js/wholesale/registry.js` の `VENDORS` にエントリ追加
+2. `test/fixtures/eml/` にサンプルEMLファイルを配置
+3. `test/integration-pipeline.test.js` に期待結果（商品コード・数量・単位）を追加
+4. `test/registry.test.js` のVENDORS数を更新
+5. `npm test` で全パターン回帰テスト — 既存取引先のパイプラインが壊れていないことを確認
 
 **納入コード決定ロジック**（`getNounyuCodeByCustomer()`）: 取引区分に基づいて決定
 - 取引区分1（掛売）: 山善='020'、その他='030'（月末締め）
@@ -78,7 +85,8 @@ js/
 - **支払/納入コード**: 代引き→'001'+代引手数料行、振込→'003'、卸売は取引区分ベースで`getNounyuCodeByCustomer()`が決定
 - **単価区分別価格**（卸売）: 得意先の`tankaSyurui`で単価区分（price1/price2/price3）を選択
 - **軽減税率**: 商品マスタの分類１="07"（食料品）→ 8%（×1.08）、それ以外 → 10%（×1.10）。弥生TSV課税区分: 軽減=30、標準=13
-- **商品名マッチング**: コードなしメール注文は`searchProductsByText()`で商品マスタをキーワード検索し自動マッチ（正逆両方向マッチング対応）
+- **商品名マッチング**: コードなしメール注文は`searchProductsByText()`で商品マスタをキーワード検索し自動マッチ。3段階ソート: キーワード一致率 → バイグラム類似度 → 商品名長さ昇順（単品優先）
+- **ロット数量解決**: `unit==="ロット"`の場合、商品マスタの入数(`lotSize`)で実数量に変換。入数未設定時はエラー表示
 - **出力形式**: 59フィールド、タブ区切り、Shift-JIS、CRLF。フィールド20='334401'、フィールド40='テネモスショップ'
 
 ### ファイルエンコーディング
@@ -88,4 +96,9 @@ js/
 
 ### テスト
 
-テストは `test/` ディレクトリに配置。vitest使用。テストファイルは `*.test.js` 命名規則。`test/fixtures/` にテスト用データ。
+テストは `test/` ディレクトリに配置。vitest使用。テストファイルは `*.test.js` 命名規則。
+
+- `test/fixtures/eml/` — 取引先別サンプルEMLファイル（回帰テスト用）
+- `test/integration-pipeline.test.js` — 卸売フルパイプライン統合テスト（EML解析→商品抽出→スコアリング）
+- `test/product-search.test.js` — 商品名検索のバイグラム類似度テスト
+- localStorageモック: `vi.stubGlobal('localStorage', {...})` パターンを使用

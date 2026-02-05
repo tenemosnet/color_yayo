@@ -1,0 +1,11 @@
+From: test@hikaruland.co.jp
+Date: Tue, 3 Feb 2026 11:16:15 +0900
+Subject: test
+Content-Type: multipart/mixed; boundary="----boundary123"
+
+------boundary123
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+
+ビダウォーターソープ 12個お願いします。
+------boundary123--
