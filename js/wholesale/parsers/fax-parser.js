@@ -286,8 +286,8 @@ function parseOptimalLifePdf(text) {
             const nextLine = lines[j].trim();
             // 次の商品コード行に到達したら中断
             if (/^[12]\d{3}$/.test(nextLine)) break;
-            // 数量候補: 1〜3桁の数字だけの行
-            const qtyMatch = nextLine.match(/^(\d{1,3})$/);
+            // 数量候補: 行頭が1〜3桁の数字（後に非数字または行末）
+            const qtyMatch = nextLine.match(/^(\d{1,3})(?:\D|$)/);
             if (qtyMatch) {
                 const num = parseInt(qtyMatch[1], 10);
                 if (num >= 1 && num <= 999) {
@@ -303,27 +303,28 @@ function parseOptimalLifePdf(text) {
         }
     }
 
-    // 方法2: コードと数量が同一行にある場合（Tesseract等）
-    if (result.products.length === 0) {
-        for (const line of lines) {
-            const codeMatch = line.match(/\b([12]\d{3})\b/);
-            if (!codeMatch) continue;
+    // 方法2: コードと数量が同一行にある場合 — 方法1で漏れた商品を補完
+    // OCR環境差でコードが行単独にならない場合に対応
+    const foundCodes = new Set(result.products.map(p => p.code));
+    for (const line of lines) {
+        const codeMatch = line.match(/\b([12]\d{3})\b/);
+        if (!codeMatch) continue;
 
-            const code = codeMatch[1];
-            if (excludeCodes.has(code)) continue;
-            if (result.products.find(p => p.code === code)) continue;
+        const code = codeMatch[1];
+        if (excludeCodes.has(code)) continue;
+        if (foundCodes.has(code)) continue;
 
-            const afterCode = line.substring(line.indexOf(code) + code.length);
-            const numbersInLine = afterCode.match(/\b(\d{1,3})\b/g);
-            if (numbersInLine) {
-                for (const numStr of numbersInLine) {
-                    const num = parseInt(numStr, 10);
-                    if (num >= 1 && num <= 999) {
-                        result.products.push({ code, quantity: num, unit: '' });
-                        console.log(`オプティマル商品検出（同一行）: コード=${code}, 数量=${num}`);
-                        break;
-                    }
-                }
+        // コード以降のテキストから、備考（※）より前の最後の数字を数量とする
+        const afterCode = line.substring(line.indexOf(code) + code.length);
+        const beforeRemark = afterCode.split(/※/)[0];
+        const numbersInLine = beforeRemark.match(/\b(\d{1,3})\b/g);
+        if (numbersInLine) {
+            // 最後の数字を数量として採用（品名中の数字を避ける）
+            const num = parseInt(numbersInLine[numbersInLine.length - 1], 10);
+            if (num >= 1 && num <= 999) {
+                result.products.push({ code, quantity: num, unit: '' });
+                foundCodes.add(code);
+                console.log(`オプティマル商品検出（同一行補完）: コード=${code}, 数量=${num}`);
             }
         }
     }
