@@ -53,8 +53,9 @@ export function parseProductMasterCSV(csvText) {
     const price1Index = headers.findIndex(h => h === '税抜売上単価１');
     const price2Index = headers.findIndex(h => h === '税抜売上単価２');
     const price3Index = headers.findIndex(h => h === '税抜売上単価３');
+    const lotSizeIndex = headers.findIndex(h => h === '入数');
 
-    console.log('カラムインデックス: コード=', codeIndex, ', 名称=', nameIndex, ', 分類１=', category1Index, ', 税抜売上単価１=', price1Index, ', 税抜売上単価２=', price2Index, ', 税抜売上単価３=', price3Index);
+    console.log('カラムインデックス: コード=', codeIndex, ', 名称=', nameIndex, ', 分類１=', category1Index, ', 税抜売上単価１=', price1Index, ', 税抜売上単価２=', price2Index, ', 税抜売上単価３=', price3Index, ', 入数=', lotSizeIndex);
 
     if (codeIndex === -1 || nameIndex === -1) {
         console.error('必須カラムが見つかりません。ヘッダー:', headers);
@@ -78,6 +79,7 @@ export function parseProductMasterCSV(csvText) {
         const price3 = parsePrice(fields[price3Index]);
 
         const category1 = (fields[category1Index] || '').trim();
+        const lotSize = lotSizeIndex !== -1 ? parsePrice(fields[lotSizeIndex]) : 0;
 
         productMap.set(code, {
             code,
@@ -85,7 +87,8 @@ export function parseProductMasterCSV(csvText) {
             category1,  // 分類１（"07"=食料品 → 軽減税率8%）
             price1,  // 税抜売上単価１
             price2,  // 税抜売上単価２
-            price3   // 税抜売上単価３
+            price3,  // 税抜売上単価３
+            lotSize  // 入数（1ロットあたりの数量）
         });
     }
 
@@ -258,6 +261,19 @@ export function getProductName(code) {
 
     const product = master.get(code);
     return product ? product.name : '';
+}
+
+/**
+ * 商品コードから入数（ロットサイズ）を取得
+ * @param {string} code - 商品コード
+ * @returns {number} 入数（見つからない場合は0）
+ */
+export function getProductLotSize(code) {
+    const master = loadProductMaster();
+    if (!master) return 0;
+
+    const product = master.get(code);
+    return product ? (product.lotSize || 0) : 0;
 }
 
 /**

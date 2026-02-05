@@ -6,7 +6,7 @@
 import { readEmlFile, formatDateForInput } from './parsers/eml-parser.js';
 import { extractProductData, calculateAmount, calculateTotal } from './parsers/text-parser.js';
 import { convertToYayoiFormat, downloadAsShiftJIS, getDateString, determineNounyuCode } from './converter.js';
-import { loadProductMasterFile, loadProductMaster, getProductMasterInfo, getWholesalePrice, getProductName, getProductCategory1, clearProductMaster } from '../common/product-master.js';
+import { loadProductMasterFile, loadProductMaster, getProductMasterInfo, getWholesalePrice, getProductName, getProductCategory1, getProductLotSize, clearProductMaster } from '../common/product-master.js';
 import {
     loadCustomerMasterFile,
     loadCustomerMaster,
@@ -471,7 +471,8 @@ async function handlePdfFile(file) {
             quantity: p.quantity,
             unit: p.unit || '',
             unitPrice: 0,
-            amount: 0
+            amount: 0,
+            lotSize: p.lotSize || undefined
         }));
 
         if (currentProducts.length === 0 && isFax) {
@@ -711,7 +712,8 @@ function showFaxPasteUI(pdfData) {
             quantity: p.quantity,
             unit: p.unit || '',
             unitPrice: 0,
-            amount: 0
+            amount: 0,
+            lotSize: p.lotSize || undefined
         }));
 
         // 商品マスタから単価・商品名を自動設定
@@ -869,6 +871,13 @@ function updateLotWarnings() {
             messages.push(`<span style="color: #d32f2f;">⚠ ${detectedCustomer.name}（${detectedCustomer.code}）はレジストリ未登録の取引先です。納入コード・変換設定が未調整のため、出力内容を確認してください。</span>`);
         }
     }
+
+    // 入数未設定エラー（ロット注文で入数が商品マスタに未登録）
+    currentProducts
+        .filter(p => p.lotError && !p.isShipping)
+        .forEach(p => {
+            messages.push(`<span style="color: #d32f2f;">⚠ ${p.code} ${p.name}: 商品マスタの入数が未設定です。弥生販売で入数を入力してください。</span>`);
+        });
 
     // ロット数未満の警告
     currentProducts
@@ -1409,6 +1418,22 @@ function applyPricesFromMaster(products, priceType = 2) {
     products.forEach(product => {
         const code = product.code;
 
+        // ロット注文の数量解決: unit="ロット" の場合、商品マスタの入数で実数量に変換
+        if (product.unit === 'ロット' && code) {
+            const lotSize = getProductLotSize(code);
+            if (lotSize > 0) {
+                const lotCount = product.quantity;
+                product.quantity = lotCount * lotSize;
+                product.lotSize = lotSize;
+                product.unit = '';
+                console.log(`ロット解決: ${code} ${lotCount}ロット × 入数${lotSize} = ${product.quantity}個`);
+            } else {
+                // 入数未設定 → エラーフラグ
+                product.lotError = true;
+                console.warn(`ロット解決不可: ${code} — 商品マスタの入数が未設定`);
+            }
+        }
+
         // 分類１から軽減税率対象か判定
         const category1 = getProductCategory1(code);
         const isReducedTax = (category1 === REDUCED_TAX_CATEGORY1);
@@ -1573,7 +1598,8 @@ async function handleEmlWithPdfAttachment(emlFile, emlData, pdfAttachment) {
             quantity: p.quantity,
             unit: p.unit || '',
             unitPrice: 0,
-            amount: 0
+            amount: 0,
+            lotSize: p.lotSize || undefined
         }));
 
         // 商品マスタから単価・商品名を自動設定（顧客の単価種類に応じて）

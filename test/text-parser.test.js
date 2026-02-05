@@ -2,8 +2,17 @@
  * text-parser.js 単体テスト
  * 山善メール本文からの商品データ抽出
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { extractProductData, calculateAmount, calculateTotal, zenToHan } from '../js/wholesale/parsers/text-parser.js';
+
+// searchProductsByText が localStorage を使うためモック
+beforeAll(() => {
+    vi.stubGlobal('localStorage', {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {}
+    });
+});
 
 describe('zenToHan', () => {
     it('全角数字を半角に変換する', () => {
@@ -51,6 +60,33 @@ describe('extractProductData', () => {
         const emailBody = 'お世話になっております。\n確認お願いします。';
         const products = extractProductData(emailBody);
         expect(products).toHaveLength(0);
+    });
+
+    it('アベナチュラル形式: 商品名＋容量＋ロット数を抽出する', () => {
+        const emailBody = `テネモスネット
+菅原様
+
+いつもお世話になっております。
+
+大豆とお米の酵素 650ml １ロット
+ビダソープ詰め替え用 400ml １ロット
+
+注文お願いいたします。
+何卒よろしくお願いします。`;
+        const products = extractProductData(emailBody);
+        expect(products).toHaveLength(2);
+        expect(products[0].quantity).toBe(1);
+        expect(products[0].unit).toBe('ロット');
+        expect(products[1].quantity).toBe(1);
+        expect(products[1].unit).toBe('ロット');
+    });
+
+    it('ロット単位: 全角数字の複数ロットを正しく抽出する', () => {
+        const emailBody = '大豆とお米の酵素 650ml ２ロット';
+        const products = extractProductData(emailBody);
+        expect(products).toHaveLength(1);
+        expect(products[0].quantity).toBe(2);
+        expect(products[0].unit).toBe('ロット');
     });
 
     it('単価と金額は初期値0で返す', () => {

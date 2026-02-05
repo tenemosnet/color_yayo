@@ -51,6 +51,13 @@ export const VENDORS = {
         detect: { type: 'eml' },
         domain: 'mothers-lunch',
         japaneseName: "MOTHER'S・I"
+    },
+    ABE_NATURAL: {
+        code: '000000',
+        nounyuCode: '030',
+        detect: { type: 'eml' },
+        domain: 'abenatural',
+        japaneseName: 'アベナチュラル'
     }
 };
 
