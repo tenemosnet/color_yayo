@@ -318,19 +318,20 @@ export function searchProductsByText(searchText) {
     for (const [code, product] of master) {
         const normalizedName = normalizeForSearch(product.name);
 
-        // 方向1: キーワード → 商品名に含まれるか
+        // 方向1: キーワード → 商品名に含まれるか（一致率でスコアリング）
         let score = 0;
         if (keywords.length > 0) {
             const matchCount = keywords.filter(kw => normalizedName.includes(kw)).length;
             if (matchCount >= Math.ceil(keywords.length / 2)) {
-                score = matchCount;
+                // スコア = 一致率 × 100（例: 3/4マッチ → 75点）
+                score = Math.round((matchCount / keywords.length) * 100);
             }
         }
 
         // 方向2: 商品名が検索テキストに含まれるか（逆方向マッチ）
         // 例: 検索「ポケットピッコロお願いします」に商品名「ポケットピッコロ」が含まれる
         if (score === 0 && normalizedName.length >= 3 && normalizedSearch.includes(normalizedName)) {
-            score = 10;  // 完全包含は高スコア
+            score = 150;  // 完全包含は一致率100%より高スコア
         }
 
         if (score > 0) {
