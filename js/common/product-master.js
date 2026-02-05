@@ -315,6 +315,13 @@ export function searchProductsByText(searchText) {
         .map(k => normalizeForSearch(k))
         .filter(k => k.length > 1);  // 1文字のキーワードは除外
 
+    // 検索テキストの文字バイグラム（2文字組）を生成（ループ外で1回だけ）
+    const searchBigrams = [];
+    for (let i = 0; i < normalizedSearch.length - 1; i++) {
+        searchBigrams.push(normalizedSearch.substring(i, i + 2));
+    }
+    const uniqueSearchBigrams = [...new Set(searchBigrams)];
+
     for (const [code, product] of master) {
         const normalizedName = normalizeForSearch(product.name);
 
@@ -335,16 +342,24 @@ export function searchProductsByText(searchText) {
         }
 
         if (score > 0) {
+            // バイグラム類似度: 検索テキストの2文字組が商品名にいくつ含まれるか
+            let bigramScore = 0;
+            if (uniqueSearchBigrams.length > 0) {
+                const bigramMatches = uniqueSearchBigrams.filter(bg => normalizedName.includes(bg)).length;
+                bigramScore = Math.round((bigramMatches / uniqueSearchBigrams.length) * 100);
+            }
+
             results.push({
                 code: product.code,
                 name: product.name,
-                score: score
+                score: score,
+                bigramScore: bigramScore
             });
         }
     }
 
-    // スコア降順、同スコアなら商品名が短い方を優先（セット商品より単品を優先）
-    results.sort((a, b) => b.score - a.score || a.name.length - b.name.length);
+    // スコア降順 → バイグラム類似度降順 → 商品名が短い方を優先
+    results.sort((a, b) => b.score - a.score || b.bigramScore - a.bigramScore || a.name.length - b.name.length);
     return results;
 }
 
