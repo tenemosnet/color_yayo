@@ -454,11 +454,6 @@ input[type="file"] {
     align-items: center;
 }
 
-.new-customers-section h2::before {
-    content: "⚠️";
-    margin-right: 10px;
-}
-
 .new-customers-info {
     background: white;
     border-radius: 10px;
@@ -589,11 +584,6 @@ input[type="file"] {
     margin-bottom: 20px;
     display: flex;
     align-items: center;
-}
-
-.orders-section h2::before {
-    content: "✅";
-    margin-right: 10px;
 }
 
 .orders-table {
