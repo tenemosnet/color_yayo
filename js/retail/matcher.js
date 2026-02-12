@@ -21,9 +21,12 @@ function detectDiscrepancies(colormeCustomer, yayoiCustomer, matchMethod) {
     const warnings = [];
 
     // 名前の差異チェック（メールアドレス一致・電話番号一致の両方で実施）
+    // スペース（半角・全角）の有無だけの違いは無視する
     const cmName = (colormeCustomer.customerName || '').trim();
     const yaName = (yayoiCustomer.name || '').trim();
-    if (cmName && yaName && cmName !== yaName) {
+    const cmNameNoSpace = cmName.replace(/[\s　]/g, '');
+    const yaNameNoSpace = yaName.replace(/[\s　]/g, '');
+    if (cmName && yaName && cmNameNoSpace !== yaNameNoSpace) {
         warnings.push({
             type: 'name_change',
             label: '氏名変更の可能性',

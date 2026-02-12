@@ -586,6 +586,33 @@ input[type="file"] {
     align-items: center;
 }
 
+.sort-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.sort-btn {
+    padding: 6px 16px;
+    border: 2px solid #FF6B9D;
+    border-radius: 20px;
+    background: white;
+    color: #FF6B9D;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sort-btn:hover {
+    background: #fff0f5;
+}
+
+.sort-btn.active {
+    background: #FF6B9D;
+    color: white;
+}
+
 .orders-table {
     width: 100%;
     border-collapse: collapse;

@@ -16,6 +16,7 @@ let colormeOrders = [];
 let yayoiCustomers = [];
 let newCustomersList = [];
 let displayedOrders = [];
+let currentSortOrder = 'desc';
 
 // ページ読み込み時の初期化
 window.addEventListener('DOMContentLoaded', () => {
@@ -400,18 +401,7 @@ function handleCustomerMatching() {
     displayNewCustomers(newCustomersList);
 
     // 受注データリスト表示
-    displayedOrders = displayOrders(colormeOrders);
-
-    // 全選択チェックボックスのイベント
-    document.getElementById('selectAllOrders')?.addEventListener('change', handleSelectAll);
-
-    // 各チェックボックスのイベント
-    colormeOrders.forEach((order, index) => {
-        const checkbox = document.getElementById(`orderCheck_${index}`);
-        if (checkbox) {
-            checkbox.addEventListener('change', () => handleOrderCheckChange(index));
-        }
-    });
+    renderOrderList();
 
     // 新規顧客チェックボックスのイベント
     newCustomersList.forEach((customer, index) => {
@@ -454,6 +444,53 @@ function handleSelectAll(e) {
  */
 function handleOrderCheckChange(index) {
     // 現状は何もしない（将来的に個別の処理を追加可能）
+}
+
+/**
+ * 受注リスト描画（ソートボタン・チェックボックスイベント含む）
+ * チェック状態を保持したまま再描画できる
+ */
+function renderOrderList(preserveChecks) {
+    // チェック状態の保存
+    let checkedMap = null;
+    if (preserveChecks) {
+        checkedMap = new Map();
+        colormeOrders.forEach((_, index) => {
+            const cb = document.getElementById(`orderCheck_${index}`);
+            if (cb) checkedMap.set(index, cb.checked);
+        });
+    }
+
+    displayedOrders = displayOrders(colormeOrders, currentSortOrder);
+
+    // チェック状態の復元
+    if (checkedMap) {
+        checkedMap.forEach((checked, index) => {
+            const cb = document.getElementById(`orderCheck_${index}`);
+            if (cb) cb.checked = checked;
+        });
+    }
+
+    // イベントリスナー設定
+    document.getElementById('selectAllOrders')?.addEventListener('change', handleSelectAll);
+    colormeOrders.forEach((_, index) => {
+        const cb = document.getElementById(`orderCheck_${index}`);
+        if (cb) cb.addEventListener('change', () => handleOrderCheckChange(index));
+    });
+
+    // ソート切り替えボタン
+    document.getElementById('sortDescBtn')?.addEventListener('click', () => {
+        if (currentSortOrder !== 'desc') {
+            currentSortOrder = 'desc';
+            renderOrderList(true);
+        }
+    });
+    document.getElementById('sortAscBtn')?.addEventListener('click', () => {
+        if (currentSortOrder !== 'asc') {
+            currentSortOrder = 'asc';
+            renderOrderList(true);
+        }
+    });
 }
 
 /**

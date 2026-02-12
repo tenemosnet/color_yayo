@@ -119,26 +119,34 @@ export function displayNewCustomers(customers) {
 /**
  * 受注データリストを表示
  */
-export function displayOrders(orders) {
+export function displayOrders(orders, sortOrder = 'desc') {
     const section = document.getElementById('ordersSection');
     const list = document.getElementById('ordersList');
 
     console.log('\n' + '='.repeat(50));
     console.log('📋 受注データ表示処理');
-    console.log('総受注件数:', orders.length);
+    console.log('総受注件数:', orders.length, 'ソート:', sortOrder);
     console.log('='.repeat(50) + '\n');
 
-    // 売上ID降順にソート（カラーミーと同じ順番）
+    // 売上IDでソート
     const sortedOrders = orders.map((order, originalIndex) => ({
         ...order,
         originalIndex: originalIndex
     })).sort((a, b) => {
         const idA = parseInt(a.salesId) || 0;
         const idB = parseInt(b.salesId) || 0;
-        return idB - idA; // 降順
+        return sortOrder === 'asc' ? idA - idB : idB - idA;
     });
 
-    let html = '<table class="orders-table"><thead><tr>';
+    // ソート切り替えボタン
+    const descActive = sortOrder === 'desc' ? ' active' : '';
+    const ascActive = sortOrder === 'asc' ? ' active' : '';
+    let html = '<div class="sort-toggle">';
+    html += `<button id="sortDescBtn" class="sort-btn${descActive}">↓ 新しい順</button>`;
+    html += `<button id="sortAscBtn" class="sort-btn${ascActive}">↑ 古い順</button>`;
+    html += '</div>';
+
+    html += '<table class="orders-table"><thead><tr>';
     html += '<th class="checkbox-cell"><input type="checkbox" id="selectAllOrders" /></th>';
     html += '<th style="width: 100px;">売上ID</th>';
     html += '<th style="width: 100px;">受注日</th>';
