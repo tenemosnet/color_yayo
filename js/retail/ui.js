@@ -253,9 +253,14 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
 
         if (bankMatches) {
             if (bankMatch) {
-                const statusLabel = bankMatch.status === 'confirmed'
-                    ? '<span class="bank-status-confirmed">✅ 入金確認</span>'
-                    : '<span class="bank-status-candidate">⚠️ 候補</span>';
+                let statusLabel;
+                if (bankMatch.status === 'confirmed') {
+                    statusLabel = '<span class="bank-status-confirmed">✅ 入金確認</span>';
+                } else {
+                    const reasonsJson = bankMatch.reasons ? JSON.stringify(bankMatch.reasons).replace(/"/g, '&quot;') : '[]';
+                    const depositName = (bankMatch.deposit.name || '').replace(/"/g, '&quot;');
+                    statusLabel = `<span class="bank-status-candidate bank-candidate-clickable" data-reasons="${reasonsJson}" data-deposit-name="${depositName}" data-deposit-amount="${bankMatch.deposit.amount}" data-deposit-date="${bankMatch.deposit.date}">⚠️ 候補</span>`;
+                }
                 html += `<td>${statusLabel}</td>`;
                 html += `<td style="font-size: 12px;">${bankMatch.deposit.date}</td>`;
             } else {

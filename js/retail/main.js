@@ -503,6 +503,17 @@ function renderOrderList(preserveChecks) {
             renderOrderList(true);
         }
     });
+
+    // 候補バッジのクリックイベント
+    document.querySelectorAll('.bank-candidate-clickable').forEach(el => {
+        el.addEventListener('click', () => {
+            const reasons = JSON.parse(el.dataset.reasons || '[]');
+            const name = el.dataset.depositName;
+            const amount = parseInt(el.dataset.depositAmount) || 0;
+            const date = el.dataset.depositDate;
+            showCandidateReasonPopup({ reasons, name, amount, date });
+        });
+    });
 }
 
 /**
@@ -562,6 +573,39 @@ async function handleBankCSVFile(e) {
     }
 
     e.target.value = '';
+}
+
+/**
+ * 候補理由のポップアップ表示
+ */
+function showCandidateReasonPopup({ reasons, name, amount, date }) {
+    document.getElementById('bankPopupOverlay')?.remove();
+
+    const reasonsList = reasons.map(r => `<li style="margin-bottom:4px;">${r}</li>`).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'bankPopupOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+    overlay.innerHTML = `
+        <div style="background:white;border-radius:12px;padding:24px;max-width:450px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="margin:0;color:#e65100;">⚠️ 候補の理由</h3>
+                <button id="closeBankPopup" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;">✕</button>
+            </div>
+            <div style="background:#fff3e0;border-radius:8px;padding:12px;margin-bottom:12px;">
+                <div style="font-size:13px;color:#666;">振込情報</div>
+                <div style="font-weight:bold;font-size:15px;margin-top:4px;">${name}</div>
+                <div style="font-size:14px;margin-top:2px;">¥${amount.toLocaleString()} / ${date}</div>
+            </div>
+            <ul style="font-size:14px;color:#333;padding-left:20px;margin:0;">${reasonsList}</ul>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('closeBankPopup').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
 }
 
 /**

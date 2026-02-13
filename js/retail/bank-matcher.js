@@ -88,6 +88,9 @@ export function matchDepositsToOrders(deposits, orders) {
             const deposit = deposits[di];
             if (deposit.amount !== total) continue;
 
+            // 受注日より前の入金はペアリング対象外
+            if (order.orderDate && deposit.date < order.orderDate) continue;
+
             const depositNameNorm = normalizeName(deposit.name);
 
             // 名前照合: 漢字名 or フリガナ(半角カナ化)で一致
@@ -100,7 +103,7 @@ export function matchDepositsToOrders(deposits, orders) {
         }
     }
 
-    // Pass 2: 金額のみ一致（candidate）
+    // Pass 2: 金額のみ一致（candidate）— 理由を記録
     for (let oi = 0; oi < orders.length; oi++) {
         if (matches.has(oi)) continue;
 
@@ -108,16 +111,28 @@ export function matchDepositsToOrders(deposits, orders) {
         if (isCODOrder(order)) continue;
 
         const total = orderTotals[oi];
+        const orderNameNorm = normalizeName(order.customerName);
+        const orderFuriganaNorm = normalizeName(order.furigana);
 
         for (let di = 0; di < deposits.length; di++) {
             if (usedDeposits.has(di)) continue;
 
             const deposit = deposits[di];
-            if (deposit.amount === total) {
-                matches.set(oi, { status: 'candidate', deposit });
-                usedDeposits.add(di);
-                break;
+            if (deposit.amount !== total) continue;
+
+            // 受注日より前の入金はペアリング対象外
+            if (order.orderDate && deposit.date < order.orderDate) continue;
+
+            // 金額一致だが名前不一致 → 候補
+            const depositNameNorm = normalizeName(deposit.name);
+            const reasons = [];
+            reasons.push('金額一致');
+            if (depositNameNorm !== orderNameNorm && depositNameNorm !== orderFuriganaNorm) {
+                reasons.push(`名前不一致（振込: ${deposit.name} / 受注: ${order.customerName}）`);
             }
+            matches.set(oi, { status: 'candidate', deposit, reasons });
+            usedDeposits.add(di);
+            break;
         }
     }
 

@@ -637,6 +637,12 @@ input[type="file"] {
     font-size: 12px;
 }
 
+.bank-candidate-clickable {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
 .sort-toggle {
     display: flex;
     gap: 8px;
