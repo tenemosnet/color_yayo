@@ -88,8 +88,8 @@ export function matchDepositsToOrders(deposits, orders) {
             const deposit = deposits[di];
             if (deposit.amount !== total) continue;
 
-            // 受注日より前の入金はペアリング対象外（日付部分のみ比較）
-            if (order.orderDate && deposit.date < order.orderDate.slice(0, 10)) continue;
+            // 受注日より前の入金はペアリング対象外（日付部分のみ、区切り文字を統一して比較）
+            if (order.orderDate && deposit.date < order.orderDate.slice(0, 10).replace(/\//g, '-')) continue;
 
             const depositNameNorm = normalizeName(deposit.name);
 
@@ -120,8 +120,8 @@ export function matchDepositsToOrders(deposits, orders) {
             const deposit = deposits[di];
             if (deposit.amount !== total) continue;
 
-            // 受注日より前の入金はペアリング対象外（日付部分のみ比較）
-            if (order.orderDate && deposit.date < order.orderDate.slice(0, 10)) continue;
+            // 受注日より前の入金はペアリング対象外（日付部分のみ、区切り文字を統一して比較）
+            if (order.orderDate && deposit.date < order.orderDate.slice(0, 10).replace(/\//g, '-')) continue;
 
             // 金額一致だが名前不一致 → 候補
             const depositNameNorm = normalizeName(deposit.name);
