@@ -44,8 +44,14 @@ export function normalizeName(name) {
     for (const char of name) {
         result += FULL_TO_HALF_KANA[char] || char;
     }
+    // 小文字カナを大文字カナに統一（銀行振込では大文字表記が一般的）
+    const smallToLarge = { 'ｧ': 'ｱ', 'ｨ': 'ｲ', 'ｩ': 'ｳ', 'ｪ': 'ｴ', 'ｫ': 'ｵ', 'ｯ': 'ﾂ', 'ｬ': 'ﾔ', 'ｭ': 'ﾕ', 'ｮ': 'ﾖ' };
+    let normalized = '';
+    for (const ch of result) {
+        normalized += smallToLarge[ch] || ch;
+    }
     // スペース（半角・全角）除去、大文字化（英字対応）
-    return result.replace(/[\s　]/g, '').toUpperCase();
+    return normalized.replace(/[\s　]/g, '').toUpperCase();
 }
 
 /**

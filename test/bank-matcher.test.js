@@ -10,6 +10,16 @@ describe('normalizeName', () => {
         expect(normalizeName('ｵｵｻｶ ｶﾖｺ')).toBe('ｵｵｻｶｶﾖｺ');
     });
 
+    it('小文字カナを大文字カナに統一する（銀行振込対応）', () => {
+        // リョウキチ → ﾘﾖｳｷﾁ（ｮ→ﾖ）
+        expect(normalizeName('リョウキチ')).toBe('ﾘﾖｳｷﾁ');
+        expect(normalizeName('ﾘｮｳｷﾁ')).toBe('ﾘﾖｳｷﾁ');
+        // ショウタ → ｼﾖｳﾀ（ｮ→ﾖ）
+        expect(normalizeName('ショウタ')).toBe('ｼﾖｳﾀ');
+        // ユッコ → ﾕﾂｺ（ｯ→ﾂ）
+        expect(normalizeName('ユッコ')).toBe('ﾕﾂｺ');
+    });
+
     it('漢字名のスペースを除去する', () => {
         expect(normalizeName('山田　太郎')).toBe('山田太郎');
         expect(normalizeName('山田 太郎')).toBe('山田太郎');
