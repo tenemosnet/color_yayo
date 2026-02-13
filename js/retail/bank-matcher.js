@@ -33,25 +33,64 @@ const FULL_TO_HALF_KANA = {
 };
 
 /**
- * 名前を正規化（スペース除去、全角→半角カナ変換）
+ * 旧字体・異体字→新字体マッピング（人名で頻出するもの）
+ */
+const VARIANT_KANJI = {
+    '邉': '辺', '邊': '辺',
+    '髙': '高',
+    '齋': '斎', '齊': '斎',
+    '澤': '沢',
+    '櫻': '桜',
+    '國': '国',
+    '廣': '広',
+    '藏': '蔵',
+    '濱': '浜', '濵': '浜',
+    '嶋': '島', '嶌': '島',
+    '﨑': '崎',
+    '龍': '竜',
+    '惠': '恵',
+    '眞': '真',
+    '實': '実',
+    '壽': '寿',
+    '榮': '栄',
+    '豐': '豊',
+    '鐵': '鉄',
+    '德': '徳',
+    '遙': '遥',
+    '黑': '黒',
+    '冨': '富',
+    '條': '条',
+    '繪': '絵',
+    '與': '与',
+    '穗': '穂',
+    '峯': '峰',
+    '竝': '並',
+    '靜': '静',
+    '圓': '円',
+    '辯': '弁', '瓣': '弁', '辨': '弁',
+};
+
+/**
+ * 名前を正規化（スペース除去、全角→半角カナ変換、旧字体→新字体統一）
  * @param {string} name
  * @returns {string} 正規化された名前
  */
 export function normalizeName(name) {
     if (!name) return '';
-    // 全角カタカナ→半角カタカナ変換
+    // 旧字体・異体字→新字体変換 + 全角カタカナ→半角カタカナ変換
     let result = '';
     for (const char of name) {
-        result += FULL_TO_HALF_KANA[char] || char;
+        const normalized = VARIANT_KANJI[char] || FULL_TO_HALF_KANA[char] || char;
+        result += normalized;
     }
     // 小文字カナを大文字カナに統一（銀行振込では大文字表記が一般的）
     const smallToLarge = { 'ｧ': 'ｱ', 'ｨ': 'ｲ', 'ｩ': 'ｳ', 'ｪ': 'ｴ', 'ｫ': 'ｵ', 'ｯ': 'ﾂ', 'ｬ': 'ﾔ', 'ｭ': 'ﾕ', 'ｮ': 'ﾖ' };
-    let normalized = '';
+    let kanaResult = '';
     for (const ch of result) {
-        normalized += smallToLarge[ch] || ch;
+        kanaResult += smallToLarge[ch] || ch;
     }
     // スペース（半角・全角）除去、大文字化（英字対応）
-    return normalized.replace(/[\s　]/g, '').toUpperCase();
+    return kanaResult.replace(/[\s　]/g, '').toUpperCase();
 }
 
 /**
@@ -110,6 +149,7 @@ export function matchDepositsToOrders(deposits, orders) {
     }
 
     // Pass 2: 金額のみ一致（candidate）— 理由を記録
+    // ※名前の類似度がゼロの場合はペアリングしない（ノンペア判定）
     for (let oi = 0; oi < orders.length; oi++) {
         if (matches.has(oi)) continue;
 
@@ -129,8 +169,15 @@ export function matchDepositsToOrders(deposits, orders) {
             // 受注日より前の入金はペアリング対象外（日付部分のみ、区切り文字を統一して比較）
             if (order.orderDate && deposit.date < order.orderDate.slice(0, 10).replace(/\//g, '-')) continue;
 
-            // 金額一致だが名前不一致 → 候補
+            // 金額一致だが名前不一致 → 候補（ただし名前類似度ゼロはスキップ）
             const depositNameNorm = normalizeName(deposit.name);
+
+            // ノンペア判定: 名前に共通文字が1文字もなければスキップ
+            if (!hasNameOverlap(depositNameNorm, orderNameNorm) &&
+                !hasNameOverlap(depositNameNorm, orderFuriganaNorm)) {
+                continue;
+            }
+
             const reasons = [];
             reasons.push('金額一致');
             if (depositNameNorm !== orderNameNorm && depositNameNorm !== orderFuriganaNorm) {
@@ -168,6 +215,21 @@ export function matchDepositsToOrders(deposits, orders) {
             depositUnmatched: unmatchedDeposits.length
         }
     };
+}
+
+/**
+ * 2つの名前に共通する文字が1文字以上あるか判定（ノンペア判定用）
+ * @param {string} a - 正規化済み名前
+ * @param {string} b - 正規化済み名前
+ * @returns {boolean} 共通文字があればtrue
+ */
+function hasNameOverlap(a, b) {
+    if (!a || !b) return false;
+    const setB = new Set(b);
+    for (const ch of a) {
+        if (setB.has(ch)) return true;
+    }
+    return false;
 }
 
 /**

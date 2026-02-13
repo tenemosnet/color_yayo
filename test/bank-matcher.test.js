@@ -20,6 +20,24 @@ describe('normalizeName', () => {
         expect(normalizeName('ユッコ')).toBe('ﾕﾂｺ');
     });
 
+    it('旧字体・異体字を新字体に統一する', () => {
+        // 邉→辺
+        expect(normalizeName('岡邉')).toBe('岡辺');
+        expect(normalizeName('渡邊')).toBe('渡辺');
+        // 髙→高
+        expect(normalizeName('髙橋')).toBe('高橋');
+        // 惠→恵
+        expect(normalizeName('年惠')).toBe('年恵');
+        // 齋→斎
+        expect(normalizeName('齋藤')).toBe('斎藤');
+        // 澤→沢
+        expect(normalizeName('澤田')).toBe('沢田');
+        // 廣→広
+        expect(normalizeName('廣瀬')).toBe('広瀬');
+        // 濱→浜
+        expect(normalizeName('濱田')).toBe('浜田');
+    });
+
     it('漢字名のスペースを除去する', () => {
         expect(normalizeName('山田　太郎')).toBe('山田太郎');
         expect(normalizeName('山田 太郎')).toBe('山田太郎');
@@ -133,6 +151,70 @@ describe('matchDepositsToOrders', () => {
         expect(result.summary.candidate).toBe(1);
         expect(result.summary.unmatched).toBe(0);
         expect(result.summary.total).toBe(3); // 代引き除く
+    });
+
+    it('旧字体の漢字名でもconfirmedになる（異体字正規化）', () => {
+        const orders = [
+            {
+                customerName: '岡辺　年恵',
+                furigana: 'オカベ トシエ',
+                paymentMethod: '銀行振込',
+                paymentFee: 0,
+                shippingFee: 500,
+                discountAmount: 0,
+                items: [{ subtotal: 3000 }]
+            }
+        ];
+        const deposits = [
+            { date: '2026-01-10', amount: 3500, type: '送金', name: '岡邉　年惠' }
+        ];
+        const result = matchDepositsToOrders(deposits, orders);
+
+        // 邉→辺、惠→恵に正規化されて完全一致
+        expect(result.matches.get(0).status).toBe('confirmed');
+    });
+
+    it('名前類似度ゼロの場合はcandidateにしない（ノンペア判定）', () => {
+        const orders = [
+            {
+                customerName: '水野　克紀',
+                furigana: 'ミズノ カツノリ',
+                paymentMethod: '銀行振込',
+                paymentFee: 0,
+                shippingFee: 500,
+                discountAmount: 0,
+                items: [{ subtotal: 3000 }]
+            }
+        ];
+        const deposits = [
+            { date: '2026-01-10', amount: 3500, type: '振込', name: '岡邉　年恵' }
+        ];
+        const result = matchDepositsToOrders(deposits, orders);
+
+        // 金額は一致するが名前に共通文字がないのでペアリングしない
+        expect(result.matches.size).toBe(0);
+        expect(result.unmatchedDeposits.length).toBe(1);
+    });
+
+    it('名前に部分的な共通文字がある場合はcandidateになる', () => {
+        const orders = [
+            {
+                customerName: '田中　太郎',
+                furigana: 'タナカ タロウ',
+                paymentMethod: '銀行振込',
+                paymentFee: 0,
+                shippingFee: 500,
+                discountAmount: 0,
+                items: [{ subtotal: 3000 }]
+            }
+        ];
+        const deposits = [
+            { date: '2026-01-10', amount: 3500, type: '振込', name: 'ﾀﾅｶ ｼﾞﾛｳ' }
+        ];
+        const result = matchDepositsToOrders(deposits, orders);
+
+        // 「ﾀﾅｶ」が共通するのでcandidateとしてペアリング
+        expect(result.matches.get(0).status).toBe('candidate');
     });
 
     it('1つの入金は1つの注文にのみマッチする', () => {
