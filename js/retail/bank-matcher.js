@@ -96,7 +96,7 @@ export function matchDepositsToOrders(deposits, orders) {
             // 名前照合: 漢字名 or フリガナ(半角カナ化)で一致
             if (depositNameNorm === orderNameNorm ||
                 depositNameNorm === orderFuriganaNorm) {
-                matches.set(oi, { status: 'confirmed', deposit });
+                matches.set(oi, { status: 'confirmed', deposit, depositIndex: di });
                 usedDeposits.add(di);
                 break;
             }
@@ -130,7 +130,7 @@ export function matchDepositsToOrders(deposits, orders) {
             if (depositNameNorm !== orderNameNorm && depositNameNorm !== orderFuriganaNorm) {
                 reasons.push(`名前不一致（振込: ${deposit.name} / 受注: ${order.customerName}）`);
             }
-            matches.set(oi, { status: 'candidate', deposit, reasons });
+            matches.set(oi, { status: 'candidate', deposit, depositIndex: di, reasons });
             usedDeposits.add(di);
             break;
         }

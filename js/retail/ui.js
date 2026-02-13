@@ -140,8 +140,10 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
             const dateA = matchA ? matchA.deposit.date : '9999-99-99';
             const dateB = matchB ? matchB.deposit.date : '9999-99-99';
             if (dateA !== dateB) return dateA.localeCompare(dateB);
-            // 同日の場合は売上ID昇順
-            return (parseInt(a.salesId) || 0) - (parseInt(b.salesId) || 0);
+            // 同日の場合はゆうちょCSV記載順（通帳順）。未照合は末尾
+            const idxA = matchA ? matchA.depositIndex : 99999;
+            const idxB = matchB ? matchB.depositIndex : 99999;
+            return idxA - idxB;
         }
         const idA = parseInt(a.salesId) || 0;
         const idB = parseInt(b.salesId) || 0;
