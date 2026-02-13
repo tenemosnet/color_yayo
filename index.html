@@ -199,6 +199,13 @@
             <!-- 受注データリスト -->
             <div class="orders-section" id="ordersSection" style="display: none;">
                 <h2><span style="font-size: 1.3em; margin-right: 8px;">🛒</span>受注リスト <span style="font-size: 14px; font-weight: normal; color: #666;">— ☑️で出力対象を選択</span></h2>
+                <div class="bank-upload-area">
+                    <label class="bank-upload-btn">
+                        🏦 ゆうちょ入金CSV読込
+                        <input type="file" id="bankCSVFile" accept=".csv" style="display: none;" />
+                    </label>
+                    <span id="bankMatchSummary" class="bank-match-summary"></span>
+                </div>
                 <div id="ordersList"></div>
             </div>
 

@@ -10,6 +10,8 @@ import { convertToYayoi, downloadAsShiftJIS } from './converter.js';
 import { showStatus, displaySummary, displayNewCustomers, displayOrders, toggleHelpModal, toggleAdvancedSettings, displayFileName, setButtonEnabled, getDateString } from './ui.js';
 import { getProductCategory1 } from '../common/product-master.js';
 import { loadCustomerMaster, loadCustomerMasterFile } from '../common/customer-master.js';
+import { parseYuchoBankCSV, decodeShiftJIS } from './bank-parser.js';
+import { matchDepositsToOrders } from './bank-matcher.js';
 
 // グローバル変数
 let colormeOrders = [];
@@ -17,6 +19,7 @@ let yayoiCustomers = [];
 let newCustomersList = [];
 let displayedOrders = [];
 let currentSortOrder = 'desc';
+let currentBankMatches = null; // ゆうちょ入金照合結果
 
 // ページ読み込み時の初期化
 window.addEventListener('DOMContentLoaded', () => {
@@ -111,6 +114,9 @@ function setupEventListeners() {
     
     // 変換ボタン
     document.getElementById('convertBtn')?.addEventListener('click', handleConvert);
+
+    // ゆうちょ入金CSV読込
+    document.getElementById('bankCSVFile')?.addEventListener('change', handleBankCSVFile);
 }
 
 /**
@@ -461,7 +467,7 @@ function renderOrderList(preserveChecks) {
         });
     }
 
-    displayedOrders = displayOrders(colormeOrders, currentSortOrder);
+    displayedOrders = displayOrders(colormeOrders, currentSortOrder, currentBankMatches);
 
     // チェック状態の復元
     if (checkedMap) {
@@ -491,6 +497,51 @@ function renderOrderList(preserveChecks) {
             renderOrderList(true);
         }
     });
+}
+
+/**
+ * ゆうちょ入金CSV読込ハンドラー
+ */
+async function handleBankCSVFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (colormeOrders.length === 0) {
+        showStatus('⚠️ 先にカラーミーCSVを読み込んで顧客照合を行ってください', 'error');
+        e.target.value = '';
+        return;
+    }
+
+    try {
+        const buffer = await file.arrayBuffer();
+        const csvText = decodeShiftJIS(buffer);
+        const deposits = parseYuchoBankCSV(csvText);
+
+        if (deposits.length === 0) {
+            showStatus('⚠️ 入金データが見つかりませんでした', 'error');
+            e.target.value = '';
+            return;
+        }
+
+        const result = matchDepositsToOrders(deposits, colormeOrders);
+        currentBankMatches = result.matches;
+
+        // 受注リストを再描画（入金照合列付き）
+        renderOrderList(false);
+
+        // サマリー表示
+        const summaryEl = document.getElementById('bankMatchSummary');
+        if (summaryEl) {
+            const s = result.summary;
+            summaryEl.innerHTML = `入金照合: ✅一致 <b>${s.confirmed}</b>件 / ⚠️候補 <b>${s.candidate}</b>件 / 未照合 <b>${s.unmatched}</b>件（振込${deposits.length}件中）`;
+        }
+
+        showStatus(`✅ ゆうちょ入金CSV読込完了（${deposits.length}件の入金データ）`, 'success');
+    } catch (error) {
+        showStatus(`❌ CSV読込エラー: ${error.message}`, 'error');
+    }
+
+    e.target.value = '';
 }
 
 /**

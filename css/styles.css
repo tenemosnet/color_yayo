@@ -586,6 +586,57 @@ input[type="file"] {
     align-items: center;
 }
 
+.bank-upload-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.bank-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border: 2px solid #4CAF50;
+    border-radius: 20px;
+    background: white;
+    color: #4CAF50;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bank-upload-btn:hover {
+    background: #e8f5e9;
+}
+
+.bank-match-summary {
+    font-size: 13px;
+    color: #666;
+}
+
+.bank-confirmed {
+    background: #c8e6c9 !important;
+}
+
+.bank-candidate {
+    background: #fff3e0 !important;
+}
+
+.bank-status-confirmed {
+    color: #2e7d32;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.bank-status-candidate {
+    color: #e65100;
+    font-weight: 600;
+    font-size: 12px;
+}
+
 .sort-toggle {
     display: flex;
     gap: 8px;

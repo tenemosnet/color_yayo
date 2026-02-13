@@ -119,7 +119,7 @@ export function displayNewCustomers(customers) {
 /**
  * 受注データリストを表示
  */
-export function displayOrders(orders, sortOrder = 'desc') {
+export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
     const section = document.getElementById('ordersSection');
     const list = document.getElementById('ordersList');
 
@@ -156,6 +156,10 @@ export function displayOrders(orders, sortOrder = 'desc') {
     html += '<th style="width: 90px;">決済方法</th>';
     html += '<th style="width: 70px;">顧客状態</th>';
     html += '<th style="width: 80px;">得意先<br>コード</th>';
+    if (bankMatches) {
+        html += '<th style="width: 80px;">入金照合</th>';
+        html += '<th style="width: 85px;">振込日</th>';
+    }
     html += '</tr></thead><tbody>';
 
     sortedOrders.forEach((order, index) => {
@@ -209,9 +213,18 @@ export function displayOrders(orders, sortOrder = 'desc') {
 
         const paymentColor = isCOD ? 'color: #2196F3;' : '';
         const paymentDisplay = isCOD ? '代引き' : order.paymentMethod;
-        const defaultChecked = isCOD ? 'checked' : '';
-        
-        html += `<tr class="${rowClass}">
+
+        // チェック状態: 代引き=ON、入金確認済=ON、それ以外=OFF
+        const bankMatch = bankMatches ? bankMatches.get(originalIndex) : null;
+        const defaultChecked = isCOD || (bankMatch && bankMatch.status === 'confirmed') ? 'checked' : '';
+
+        // 入金照合による行のハイライト
+        let bankRowClass = '';
+        if (bankMatch) {
+            bankRowClass = bankMatch.status === 'confirmed' ? ' bank-confirmed' : ' bank-candidate';
+        }
+
+        html += `<tr class="${rowClass}${bankRowClass}">
             <td class="checkbox-cell">
                 <input type="checkbox" id="orderCheck_${originalIndex}" data-index="${originalIndex}" ${defaultChecked} />
             </td>
@@ -222,8 +235,21 @@ export function displayOrders(orders, sortOrder = 'desc') {
             <td class="amount-cell" style="font-weight: bold;">¥${total.toLocaleString()}</td>
             <td style="${paymentColor} font-weight: bold;">${paymentDisplay}</td>
             <td>${statusBadge}</td>
-            <td class="customer-code-cell" style="font-weight: bold; color: #d32f2f;">${order.tokuisakiCode}</td>
-        </tr>`;
+            <td class="customer-code-cell" style="font-weight: bold; color: #d32f2f;">${order.tokuisakiCode}</td>`;
+
+        if (bankMatches) {
+            if (bankMatch) {
+                const statusLabel = bankMatch.status === 'confirmed'
+                    ? '<span class="bank-status-confirmed">✅ 入金確認</span>'
+                    : '<span class="bank-status-candidate">⚠️ 候補</span>';
+                html += `<td>${statusLabel}</td>`;
+                html += `<td style="font-size: 12px;">${bankMatch.deposit.date}</td>`;
+            } else {
+                html += '<td></td><td></td>';
+            }
+        }
+
+        html += '</tr>';
     });
     
     html += '</tbody></table>';
