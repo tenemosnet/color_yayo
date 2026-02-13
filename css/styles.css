@@ -664,6 +664,20 @@ input[type="file"] {
     color: white;
 }
 
+.sort-btn-bank {
+    border-color: #4CAF50;
+    color: #4CAF50;
+}
+
+.sort-btn-bank:hover {
+    background: #e8f5e9;
+}
+
+.sort-btn-bank.active {
+    background: #4CAF50;
+    color: white;
+}
+
 .orders-table {
     width: 100%;
     border-collapse: collapse;

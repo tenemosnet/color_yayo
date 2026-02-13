@@ -497,6 +497,12 @@ function renderOrderList(preserveChecks) {
             renderOrderList(true);
         }
     });
+    document.getElementById('sortBankBtn')?.addEventListener('click', () => {
+        if (currentSortOrder !== 'bank') {
+            currentSortOrder = 'bank';
+            renderOrderList(true);
+        }
+    });
 }
 
 /**
@@ -529,11 +535,25 @@ async function handleBankCSVFile(e) {
         // 受注リストを再描画（入金照合列付き）
         renderOrderList(false);
 
-        // サマリー表示
+        // サマリー表示（未照合入金ありの場合はリンク付き）
         const summaryEl = document.getElementById('bankMatchSummary');
         if (summaryEl) {
             const s = result.summary;
-            summaryEl.innerHTML = `入金照合: ✅一致 <b>${s.confirmed}</b>件 / ⚠️候補 <b>${s.candidate}</b>件 / 未照合 <b>${s.unmatched}</b>件（振込${deposits.length}件中）`;
+            let summaryHtml = `入金照合: ✅一致 <b>${s.confirmed}</b>件 / ⚠️候補 <b>${s.candidate}</b>件 / 未照合 <b>${s.unmatched}</b>件`;
+            summaryHtml += `（入金${s.depositTotal}件中 照合${s.depositMatched}件`;
+            if (s.depositUnmatched > 0) {
+                summaryHtml += ` / <a href="#" id="showUnmatchedDeposits" style="color: #e65100;">未ペアリング${s.depositUnmatched}件</a>`;
+            }
+            summaryHtml += '）';
+            summaryEl.innerHTML = summaryHtml;
+
+            // 未ペアリング入金ポップアップ
+            if (s.depositUnmatched > 0) {
+                document.getElementById('showUnmatchedDeposits')?.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    showUnmatchedDepositsPopup(result.unmatchedDeposits);
+                });
+            }
         }
 
         showStatus(`✅ ゆうちょ入金CSV読込完了（${deposits.length}件の入金データ）`, 'success');
@@ -542,6 +562,63 @@ async function handleBankCSVFile(e) {
     }
 
     e.target.value = '';
+}
+
+/**
+ * 未ペアリング入金レコードのポップアップ表示
+ */
+function showUnmatchedDepositsPopup(unmatchedDeposits) {
+    // 既存のポップアップがあれば削除
+    document.getElementById('bankPopupOverlay')?.remove();
+
+    let tableRows = unmatchedDeposits.map(d =>
+        `<tr>
+            <td style="padding: 8px 12px;">${d.date}</td>
+            <td style="padding: 8px 12px; text-align: right; font-weight: bold;">¥${d.amount.toLocaleString()}</td>
+            <td style="padding: 8px 12px;">${d.type}</td>
+            <td style="padding: 8px 12px;">${d.name}</td>
+        </tr>`
+    ).join('');
+
+    const totalAmount = unmatchedDeposits.reduce((sum, d) => sum + d.amount, 0);
+
+    const overlay = document.createElement('div');
+    overlay.id = 'bankPopupOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+    overlay.innerHTML = `
+        <div style="background:white;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="margin:0;color:#e65100;">📋 未ペアリングの入金 (${unmatchedDeposits.length}件)</h3>
+                <button id="closeBankPopup" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;">✕</button>
+            </div>
+            <p style="font-size:13px;color:#666;margin-bottom:12px;">受注リストと照合できなかった入金です。卸売振込や受注外の入金が含まれます。</p>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="background:#f5f5f5;border-bottom:2px solid #ddd;">
+                        <th style="padding:8px 12px;text-align:left;">振込日</th>
+                        <th style="padding:8px 12px;text-align:right;">金額</th>
+                        <th style="padding:8px 12px;text-align:left;">種別</th>
+                        <th style="padding:8px 12px;text-align:left;">振込人名</th>
+                    </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+                <tfoot>
+                    <tr style="border-top:2px solid #ddd;font-weight:bold;">
+                        <td style="padding:8px 12px;">合計</td>
+                        <td style="padding:8px 12px;text-align:right;">¥${totalAmount.toLocaleString()}</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 閉じるイベント
+    document.getElementById('closeBankPopup').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
 }
 
 /**

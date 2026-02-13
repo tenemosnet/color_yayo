@@ -121,6 +121,9 @@ export function matchDepositsToOrders(deposits, orders) {
         }
     }
 
+    // 未照合の入金レコードを収集
+    const unmatchedDeposits = deposits.filter((_, di) => !usedDeposits.has(di));
+
     // サマリー集計
     let confirmedCount = 0;
     let candidateCount = 0;
@@ -133,11 +136,15 @@ export function matchDepositsToOrders(deposits, orders) {
 
     return {
         matches,
+        unmatchedDeposits,
         summary: {
             confirmed: confirmedCount,
             candidate: candidateCount,
             unmatched: nonCODCount - confirmedCount - candidateCount,
-            total: nonCODCount
+            total: nonCODCount,
+            depositTotal: deposits.length,
+            depositMatched: usedDeposits.size,
+            depositUnmatched: unmatchedDeposits.length
         }
     };
 }

@@ -128,11 +128,21 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
     console.log('総受注件数:', orders.length, 'ソート:', sortOrder);
     console.log('='.repeat(50) + '\n');
 
-    // 売上IDでソート
+    // ソート
     const sortedOrders = orders.map((order, originalIndex) => ({
         ...order,
         originalIndex: originalIndex
     })).sort((a, b) => {
+        if (sortOrder === 'bank') {
+            // 振込日順（昇順: 古い→新しい）。振込日なしは末尾
+            const matchA = bankMatches ? bankMatches.get(a.originalIndex) : null;
+            const matchB = bankMatches ? bankMatches.get(b.originalIndex) : null;
+            const dateA = matchA ? matchA.deposit.date : '9999-99-99';
+            const dateB = matchB ? matchB.deposit.date : '9999-99-99';
+            if (dateA !== dateB) return dateA.localeCompare(dateB);
+            // 同日の場合は売上ID昇順
+            return (parseInt(a.salesId) || 0) - (parseInt(b.salesId) || 0);
+        }
         const idA = parseInt(a.salesId) || 0;
         const idB = parseInt(b.salesId) || 0;
         return sortOrder === 'asc' ? idA - idB : idB - idA;
@@ -141,9 +151,13 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
     // ソート切り替えボタン
     const descActive = sortOrder === 'desc' ? ' active' : '';
     const ascActive = sortOrder === 'asc' ? ' active' : '';
+    const bankActive = sortOrder === 'bank' ? ' active' : '';
     let html = '<div class="sort-toggle">';
     html += `<button id="sortDescBtn" class="sort-btn${descActive}">↓ 新しい順</button>`;
     html += `<button id="sortAscBtn" class="sort-btn${ascActive}">↑ 古い順</button>`;
+    if (bankMatches) {
+        html += `<button id="sortBankBtn" class="sort-btn sort-btn-bank${bankActive}">📅 振込日順</button>`;
+    }
     html += '</div>';
 
     html += '<table class="orders-table"><thead><tr>';
