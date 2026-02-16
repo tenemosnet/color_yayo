@@ -550,7 +550,11 @@ async function handleBankCSVFile(e) {
         const summaryEl = document.getElementById('bankMatchSummary');
         if (summaryEl) {
             const s = result.summary;
-            let summaryHtml = `入金照合: ✅一致 <b>${s.confirmed}</b>件 / ⚠️候補 <b>${s.candidate}</b>件 / 未照合 <b>${s.unmatched}</b>件`;
+            let summaryHtml = `入金照合: ✅一致 <b>${s.confirmed}</b>件`;
+            if (s.amountMismatch > 0) {
+                summaryHtml += ` / ❗入金額誤り？ <b>${s.amountMismatch}</b>件`;
+            }
+            summaryHtml += ` / ⚠️候補 <b>${s.candidate}</b>件 / 未照合 <b>${s.unmatched}</b>件`;
             summaryHtml += `（入金${s.depositTotal}件中 照合${s.depositMatched}件`;
             if (s.depositUnmatched > 0) {
                 summaryHtml += ` / <a href="#" id="showUnmatchedDeposits" style="color: #e65100;">未ペアリング${s.depositUnmatched}件</a>`;

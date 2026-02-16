@@ -625,6 +625,10 @@ input[type="file"] {
     background: #fff3e0 !important;
 }
 
+.bank-amount-mismatch {
+    background: #ffcdd2 !important;
+}
+
 .bank-status-confirmed {
     color: #2e7d32;
     font-weight: 600;
@@ -633,6 +637,12 @@ input[type="file"] {
 
 .bank-status-candidate {
     color: #e65100;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.bank-status-amount-mismatch {
+    color: #c62828;
     font-weight: 600;
     font-size: 12px;
 }

@@ -217,6 +217,30 @@ describe('matchDepositsToOrders', () => {
         expect(result.matches.get(0).status).toBe('candidate');
     });
 
+    it('名前一致・金額不一致でamount_mismatchになる', () => {
+        const deposits = [
+            { date: '2026-01-10', amount: 4000, type: '振込', name: 'ﾔﾏﾀﾞ ﾀﾛｳ' }
+        ];
+        // 山田太郎の受注合計は3500円、入金は4000円
+        const result = matchDepositsToOrders(deposits, mockOrders);
+
+        expect(result.matches.get(0).status).toBe('amount_mismatch');
+        expect(result.matches.get(0).reasons).toBeDefined();
+        expect(result.summary.amountMismatch).toBe(1);
+    });
+
+    it('名前一致・金額不一致のサマリーが正しく集計される', () => {
+        const deposits = [
+            { date: '2026-01-10', amount: 3500, type: '振込', name: 'ﾔﾏﾀﾞ ﾀﾛｳ' },      // confirmed（金額+名前一致）
+            { date: '2026-01-11', amount: 6000, type: '送金', name: '鈴木　花子' },       // amount_mismatch（名前一致、5700≠6000）
+        ];
+        const result = matchDepositsToOrders(deposits, mockOrders);
+
+        expect(result.summary.confirmed).toBe(1);
+        expect(result.summary.amountMismatch).toBe(1);
+        expect(result.summary.unmatched).toBe(1); // 高橋美咲
+    });
+
     it('1つの入金は1つの注文にのみマッチする', () => {
         // 同額の注文が2つあっても、1入金は1注文のみ
         const sameAmountOrders = [

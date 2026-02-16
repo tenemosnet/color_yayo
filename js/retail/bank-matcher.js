@@ -189,15 +189,52 @@ export function matchDepositsToOrders(deposits, orders) {
         }
     }
 
+    // Pass 3: 名前一致・金額不一致（amount_mismatch）— 入金額誤りの可能性
+    for (let oi = 0; oi < orders.length; oi++) {
+        if (matches.has(oi)) continue;
+
+        const order = orders[oi];
+        if (isCODOrder(order)) continue;
+
+        const total = orderTotals[oi];
+        const orderNameNorm = normalizeName(order.customerName);
+        const orderFuriganaNorm = normalizeName(order.furigana);
+
+        for (let di = 0; di < deposits.length; di++) {
+            if (usedDeposits.has(di)) continue;
+
+            const deposit = deposits[di];
+            // 金額が同じなら Pass 1/2 で処理済みのはず → 金額不一致のみ対象
+            if (deposit.amount === total) continue;
+
+            const depositNameNorm = normalizeName(deposit.name);
+
+            // 名前一致（漢字名 or フリガナ）
+            if (depositNameNorm === orderNameNorm ||
+                depositNameNorm === orderFuriganaNorm) {
+                const diff = deposit.amount - total;
+                const reasons = [
+                    '名前一致・金額不一致',
+                    `受注額: ¥${total.toLocaleString()} / 入金額: ¥${deposit.amount.toLocaleString()}（差額: ${diff > 0 ? '+' : ''}¥${diff.toLocaleString()}）`
+                ];
+                matches.set(oi, { status: 'amount_mismatch', deposit, depositIndex: di, reasons });
+                usedDeposits.add(di);
+                break;
+            }
+        }
+    }
+
     // 未照合の入金レコードを収集
     const unmatchedDeposits = deposits.filter((_, di) => !usedDeposits.has(di));
 
     // サマリー集計
     let confirmedCount = 0;
     let candidateCount = 0;
+    let amountMismatchCount = 0;
     matches.forEach(m => {
         if (m.status === 'confirmed') confirmedCount++;
         if (m.status === 'candidate') candidateCount++;
+        if (m.status === 'amount_mismatch') amountMismatchCount++;
     });
 
     const nonCODCount = orders.filter(o => !isCODOrder(o)).length;
@@ -208,7 +245,8 @@ export function matchDepositsToOrders(deposits, orders) {
         summary: {
             confirmed: confirmedCount,
             candidate: candidateCount,
-            unmatched: nonCODCount - confirmedCount - candidateCount,
+            amountMismatch: amountMismatchCount,
+            unmatched: nonCODCount - confirmedCount - candidateCount - amountMismatchCount,
             total: nonCODCount,
             depositTotal: deposits.length,
             depositMatched: usedDeposits.size,

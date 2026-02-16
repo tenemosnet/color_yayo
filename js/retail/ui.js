@@ -237,7 +237,9 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
         // 入金照合による行のハイライト
         let bankRowClass = '';
         if (bankMatch) {
-            bankRowClass = bankMatch.status === 'confirmed' ? ' bank-confirmed' : ' bank-candidate';
+            if (bankMatch.status === 'confirmed') bankRowClass = ' bank-confirmed';
+            else if (bankMatch.status === 'amount_mismatch') bankRowClass = ' bank-amount-mismatch';
+            else bankRowClass = ' bank-candidate';
         }
 
         html += `<tr class="${rowClass}${bankRowClass}">
@@ -258,6 +260,10 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
                 let statusLabel;
                 if (bankMatch.status === 'confirmed') {
                     statusLabel = '<span class="bank-status-confirmed">✅ 入金確認</span>';
+                } else if (bankMatch.status === 'amount_mismatch') {
+                    const reasonsJson = bankMatch.reasons ? JSON.stringify(bankMatch.reasons).replace(/"/g, '&quot;') : '[]';
+                    const depositName = (bankMatch.deposit.name || '').replace(/"/g, '&quot;');
+                    statusLabel = `<span class="bank-status-amount-mismatch bank-candidate-clickable" data-reasons="${reasonsJson}" data-deposit-name="${depositName}" data-deposit-amount="${bankMatch.deposit.amount}" data-deposit-date="${bankMatch.deposit.date}">❗ 入金額誤り？</span>`;
                 } else {
                     const reasonsJson = bankMatch.reasons ? JSON.stringify(bankMatch.reasons).replace(/"/g, '&quot;') : '[]';
                     const depositName = (bankMatch.deposit.name || '').replace(/"/g, '&quot;');
