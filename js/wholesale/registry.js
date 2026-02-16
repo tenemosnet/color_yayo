@@ -58,6 +58,11 @@ export const VENDORS = {
         detect: { type: 'eml' },
         domain: 'abenatural',
         japaneseName: 'アベナチュラル'
+    },
+    PONOMAIL: {
+        code: '006146',
+        nounyuCode: '002',
+        detect: { type: 'eml' }
     }
 };
 

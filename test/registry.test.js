@@ -6,14 +6,15 @@ import { describe, it, expect } from 'vitest';
 import { VENDORS, getNounyuCodeByCustomer, getDomainToNameMapping, getFaxCustomerCodes } from '../js/wholesale/registry.js';
 
 describe('VENDORS', () => {
-    it('6社の取引先が定義されている', () => {
-        expect(Object.keys(VENDORS)).toHaveLength(6);
+    it('7社の取引先が定義されている', () => {
+        expect(Object.keys(VENDORS)).toHaveLength(7);
         expect(VENDORS.YAMAZEN).toBeDefined();
         expect(VENDORS.YATSUHA).toBeDefined();
         expect(VENDORS.OPTIMAL).toBeDefined();
         expect(VENDORS.HIRYU).toBeDefined();
         expect(VENDORS.MOTHERS_I).toBeDefined();
         expect(VENDORS.ABE_NATURAL).toBeDefined();
+        expect(VENDORS.PONOMAIL).toBeDefined();
     });
 
     it('各取引先にcodeとnounyuCodeがある', () => {

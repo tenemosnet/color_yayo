@@ -31,7 +31,10 @@ const MOCK_PRODUCTS = {
     '1224': { code: '1224', name: '泡ﾎﾟﾝﾌﾟ400ml空容器', category1: '', price1: 509, price2: 0, price3: 0, lotSize: 0 },
     '1340': { code: '1340', name: 'ポケットピッコロ', category1: '', price1: 3300, price2: 0, price3: 0, lotSize: 0 },
     '1379': { code: '1379', name: 'お米と大豆の酵素水650ml+200ml遮光ｽﾌﾟﾚｰｾｯﾄ', category1: '', price1: 2200, price2: 0, price3: 0, lotSize: 0 },
-    '1393': { code: '1393', name: 'お米と大豆の酵素水650mlパック', category1: '', price1: 1380, price2: 0, price3: 0, lotSize: 0 }
+    '1393': { code: '1393', name: 'お米と大豆の酵素水650mlパック', category1: '', price1: 1380, price2: 0, price3: 0, lotSize: 0 },
+    '1510': { code: '1510', name: 'マナウォーター青 大', category1: '', price1: 15000, price2: 0, price3: 0, lotSize: 0 },
+    '1711': { code: '1711', name: 'ボリビア岩塩20kg', category1: '07', price1: 5000, price2: 0, price3: 0, lotSize: 0 },
+    '1800': { code: '1800', name: 'フリーエネルギー', category1: '', price1: 1500, price2: 0, price3: 0, lotSize: 0 }
 };
 
 // localStorage モック
@@ -150,5 +153,39 @@ describe('ヒカルランド パイプライン', () => {
     it('Step3: スコアリング — 1220(ソープ本体)が最上位', () => {
         // 「ビダウォーターソープ」→ 1220(本体)が正解、1221(詰替)や1224(泡ポンプ)は不正解
         expect(products[0].code).toBe('1220');
+    });
+});
+
+// ============================================================
+// PONOMAIL: Gmail multipart/alternative + base64 + 引用返信
+// ============================================================
+describe('PONOMAIL パイプライン', () => {
+    let parsed, products;
+
+    beforeEach(() => {
+        const eml = readEmlFixture('ponomail.eml');
+        parsed = parseEmlFile(eml);
+        products = extractProductData(parsed.body);
+    });
+
+    it('Step1: EML解析 — base64本文をデコードしGmailドメインを抽出', () => {
+        expect(parsed.fromDomain).toBe('gmail.com');
+        expect(parsed.body).toContain('ボリビア岩塩');
+        expect(parsed.body).toContain('フリーエネルギー本');
+        // 引用部分もbodyに含まれる（text-parserで除去される）
+        expect(parsed.body).toContain('マナウォーター青');
+    });
+
+    it('Step2: 商品抽出 — 引用返信を除外して2商品のみ抽出', () => {
+        expect(products).toHaveLength(2);
+        // コード付き・数量なし: "1711 ボリビア岩塩 20キロ" → 20キロは商品仕様、数量1
+        expect(products[0]).toMatchObject({ code: '1711', quantity: 1, unit: '' });
+        // コードなし: フリーエネルギー本 20冊
+        expect(products[1]).toMatchObject({ quantity: 20, unit: '冊' });
+    });
+
+    it('Step2: 引用部分の古い注文（1510）は抽出されない', () => {
+        const oldOrder = products.find(p => p.code === '1510');
+        expect(oldOrder).toBeUndefined();
     });
 });

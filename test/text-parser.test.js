@@ -3,7 +3,7 @@
  * 山善メール本文からの商品データ抽出
  */
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { extractProductData, calculateAmount, calculateTotal, zenToHan } from '../js/wholesale/parsers/text-parser.js';
+import { extractProductData, calculateAmount, calculateTotal, zenToHan, stripQuotedReplies } from '../js/wholesale/parsers/text-parser.js';
 
 // searchProductsByText が localStorage を使うためモック
 beforeAll(() => {
@@ -94,6 +94,102 @@ describe('extractProductData', () => {
         const products = extractProductData(emailBody);
         expect(products[0].unitPrice).toBe(0);
         expect(products[0].amount).toBe(0);
+    });
+
+    it('コード付き数量なし行: 数量1でフォールバック抽出する', () => {
+        // "20キロ" は商品仕様（重量）であり注文数量ではない
+        const emailBody = '1711  ボリビア岩塩 20キロ';
+        const products = extractProductData(emailBody);
+        expect(products).toHaveLength(1);
+        expect(products[0]).toMatchObject({ code: '1711', quantity: 1, unit: '' });
+    });
+
+    it('コード付き数量なし行: 商品名のみの行も数量1で抽出する', () => {
+        const emailBody = '1340 ポケットピッコロ';
+        const products = extractProductData(emailBody);
+        expect(products).toHaveLength(1);
+        expect(products[0]).toMatchObject({ code: '1340', name: 'ポケットピッコロ', quantity: 1, unit: '' });
+    });
+
+    it('冊単位: コードなし行から数量と単位を抽出する', () => {
+        const emailBody = 'フリーエネルギー本 20冊';
+        const products = extractProductData(emailBody);
+        expect(products).toHaveLength(1);
+        expect(products[0]).toMatchObject({ quantity: 20, unit: '冊' });
+    });
+
+    it('引用返信（日本語Gmail形式）を除外して商品を抽出する', () => {
+        const emailBody = `注文お願いします。
+
+1711  ボリビア岩塩 20キロ
+
+2025年2月25日(火) 10:42 テネモスネット卸販売部 <order@tenemos.jp>:
+
+> PONO's kitchen 頭師理恵 様
+> 1510  マナウォーター青 1個`;
+        const products = extractProductData(emailBody);
+        expect(products).toHaveLength(1);
+        expect(products[0].code).toBe('1711');
+    });
+
+    it('引用返信（英語Gmail形式）を除外する', () => {
+        const emailBody = `1110 テスト商品　12個
+
+On 2025/02/24 23:25, Test User wrote:
+> 1221 古い注文 6個`;
+        const products = extractProductData(emailBody);
+        expect(products).toHaveLength(1);
+        expect(products[0].code).toBe('1110');
+    });
+
+    it('>プレフィックスの引用行をスキップする', () => {
+        const emailBody = `1110 テスト商品　12個
+> 1221 古い引用 6個`;
+        const products = extractProductData(emailBody);
+        expect(products).toHaveLength(1);
+        expect(products[0].code).toBe('1110');
+    });
+});
+
+describe('stripQuotedReplies', () => {
+    it('日本語Gmail quoteヘッダー以降を切り捨て', () => {
+        const lines = [
+            '注文お願いします。',
+            '',
+            '2025年2月25日(火) 10:42 テネモスネット:',
+            '',
+            '> 古い注文'
+        ];
+        const result = stripQuotedReplies(lines);
+        expect(result).toHaveLength(2);
+        expect(result[0]).toBe('注文お願いします。');
+    });
+
+    it('英語Gmail quoteヘッダー以降を切り捨て', () => {
+        const lines = [
+            '新しい注文',
+            'On 2025/02/24 23:25, りえ wrote:',
+            '> 古い注文'
+        ];
+        const result = stripQuotedReplies(lines);
+        expect(result).toHaveLength(1);
+        expect(result[0]).toBe('新しい注文');
+    });
+
+    it('>プレフィックス行をフィルタリング', () => {
+        const lines = [
+            '新しい注文',
+            '> 引用行',
+            'もう1行'
+        ];
+        const result = stripQuotedReplies(lines);
+        expect(result).toEqual(['新しい注文', 'もう1行']);
+    });
+
+    it('引用なしのメールはそのまま返す', () => {
+        const lines = ['行1', '行2', '行3'];
+        const result = stripQuotedReplies(lines);
+        expect(result).toEqual(['行1', '行2', '行3']);
     });
 });
 

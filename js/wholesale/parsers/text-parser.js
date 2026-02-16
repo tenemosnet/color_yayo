@@ -16,21 +16,47 @@ export function zenToHan(text) {
 }
 
 /**
+ * メール本文から引用返信を除去
+ * Gmail/Outlook等の引用ヘッダー行以降を切り捨て、「>」プレフィックス行をスキップ
+ * @param {Array<string>} lines - メール本文の行配列
+ * @returns {Array<string>} 引用除去済みの行配列
+ */
+export function stripQuotedReplies(lines) {
+    const quoteHeaderPatterns = [
+        /^\d{4}年\d{1,2}月\d{1,2}日/,              // Gmail日本語: "2025年2月25日(火) 10:42 ..."
+        /^On \d{4}\/\d{1,2}\/\d{1,2}/,              // Gmail英語: "On 2025/02/24 23:25, ..."
+        /^-{3,}\s*(Original Message|元のメッセージ)/  // Outlook/Thunderbird
+    ];
+    const result = [];
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (quoteHeaderPatterns.some(p => p.test(trimmed))) break;
+        if (/^>/.test(trimmed)) continue;
+        result.push(line);
+    }
+    return result;
+}
+
+/**
  * メール本文から商品データを抽出
  * @param {string} emailBody - メール本文
  * @returns {Array<Object>} [{ code, name, quantity, unit, unitPrice, amount }, ...]
  */
 export function extractProductData(emailBody) {
     const products = [];
-    const lines = emailBody.split(/\r?\n/);
+    const lines = stripQuotedReplies(emailBody.split(/\r?\n/));
 
     // 商品行のパターン: 4桁コード + 商品名 + 数量 + 単位
     // 例: "1110 ノーマルレフィル　２４個"
     // 例: "1374 ペットアグア1リットル　１２本"
-    const productPattern = /^(\d{4})\s+(.+?)[　\s]+([０-９\d]+)\s*(本|個|台|ケ|ヶ|セット|箱|袋|パック|ロット)?$/;
+    // 注: キロは重量仕様（20キロ袋等）のため注文単位に含めない
+    const productPattern = /^(\d{4})\s+(.+?)[　\s]+([０-９\d]+)\s*(本|個|台|ケ|ヶ|セット|箱|袋|パック|ロット|冊)?$/;
 
-    // 注文数量の単位（個、本、台等）— 容量単位（ℓ等）は含めない
-    const orderUnits = '個|本|台|ケ|ヶ|セット|箱|袋|パック|ロット';
+    // 注文数量の単位（個、本、台等）— 容量単位（ℓ等）・重量単位（キロ等）は含めない
+    const orderUnits = '個|本|台|ケ|ヶ|セット|箱|袋|パック|ロット|冊';
+
+    // フォールバック: コード付き行で認識可能な数量がないもの（例: "1711 ボリビア岩塩 20キロ"）
+    const codeFallbackPattern = /^(\d{4})\s+(.+)$/;
     // 注文数量パターン: 行末近くに「数字+注文単位」があるものを優先的に拾う
     const orderQuantityPattern = new RegExp(`([０-９\\d]+)\\s*(${orderUnits})`, 'g');
 
@@ -60,6 +86,21 @@ export function extractProductData(emailBody) {
             continue;
         }
 
+        // フォールバック: コード付きだが数量・単位がない行 → 数量1で登録
+        // 例: "1711 ボリビア岩塩 20キロ"（20キロは商品仕様、数量は1）
+        const codeFallback = trimmedLine.match(codeFallbackPattern);
+        if (codeFallback) {
+            products.push({
+                code: codeFallback[1],
+                name: codeFallback[2].trim(),
+                quantity: 1,
+                unit: '',
+                unitPrice: 0,
+                amount: 0
+            });
+            continue;
+        }
+
         // コードなし: 行内に「数字+注文単位（個/本等）」があれば注文行とみなす
         const quantityMatches = [...trimmedLine.matchAll(orderQuantityPattern)];
         if (quantityMatches.length > 0) {
@@ -82,8 +123,16 @@ export function extractProductData(emailBody) {
 
             if (!isNaN(quantity) && quantity > 0 && rawName.length >= 2) {
                 // 商品マスタからキーワード検索
-                const searchResults = searchProductsByText(rawName);
+                let searchResults = searchProductsByText(rawName);
                 console.log(`商品名検索: "${rawName}" → ${searchResults.length}件マッチ`, searchResults.slice(0, 3));
+
+                // フォールバック: 末尾の「本」（書籍の意味）を除去して再検索
+                // 例: 「フリーエネルギー本」→「フリーエネルギー」
+                if (searchResults.length === 0 && rawName.endsWith('本') && rawName.length > 2) {
+                    const strippedName = rawName.slice(0, -1);
+                    searchResults = searchProductsByText(strippedName);
+                    console.log(`商品名検索(本除去): "${strippedName}" → ${searchResults.length}件マッチ`, searchResults.slice(0, 3));
+                }
 
                 if (searchResults.length === 1) {
                     // 一意にマッチ
