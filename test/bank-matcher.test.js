@@ -143,7 +143,7 @@ describe('matchDepositsToOrders', () => {
         const deposits = [
             { date: '2026-01-10', amount: 3500, type: '振込', name: 'ﾔﾏﾀﾞ ﾀﾛｳ' },      // confirmed
             { date: '2026-01-11', amount: 5700, type: '送金', name: '鈴木　花子' },       // confirmed
-            { date: '2026-01-12', amount: 5300, type: '振込', name: 'ﾌﾒｲ ﾀﾛｳ' },        // candidate（金額一致、名前不一致）
+            { date: '2026-01-12', amount: 5300, type: '振込', name: 'ﾀｶﾊｼ ﾐｻｷﾃﾞｽ' },   // candidate（金額一致、共通4文字以上）
         ];
         const result = matchDepositsToOrders(deposits, mockOrders);
 
