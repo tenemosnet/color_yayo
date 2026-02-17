@@ -872,11 +872,13 @@ function handleUpdateCustomerList() {
  * 変換処理を実行
  */
 function handleConvert() {
-    // チェックされた受注のみを変換
-    const selectedOrders = colormeOrders.filter((order, index) => {
-        const checkbox = document.getElementById(`orderCheck_${index}`);
-        return checkbox && checkbox.checked;
-    });
+    // チェックされた受注のみを変換（元インデックスを保持）
+    const selectedOrders = colormeOrders
+        .map((order, index) => ({ ...order, _originalIndex: index }))
+        .filter(order => {
+            const checkbox = document.getElementById(`orderCheck_${order._originalIndex}`);
+            return checkbox && checkbox.checked;
+        });
 
     if (selectedOrders.length === 0) {
         showStatus('⚠️ 変換する受注を選択してください', 'error');
@@ -893,11 +895,32 @@ function handleConvert() {
     try {
         const tantoshaCode = '11'; // 固定値
 
-        const txtContent = convertToYayoi(selectedOrders, { denpyoNoStart, tantoshaCode });
+        // 伝票並び順ソート: 代引き先 → 振込後
+        const isCOD = (o) => o.paymentMethod.includes('代引') || (o.paymentFee > 0);
+        const codOrders = selectedOrders.filter(o => isCOD(o));
+        const bankOrders = selectedOrders.filter(o => !isCOD(o));
+
+        // ゆうちょデータあり: 振込グループを入金日の新しい順でソート
+        if (currentBankMatches) {
+            bankOrders.sort((a, b) => {
+                const matchA = currentBankMatches.get(a._originalIndex);
+                const matchB = currentBankMatches.get(b._originalIndex);
+                const dateA = matchA ? matchA.deposit.date : '';
+                const dateB = matchB ? matchB.deposit.date : '';
+                if (dateA && dateB) return dateB.localeCompare(dateA);
+                if (dateA) return -1;
+                if (dateB) return 1;
+                return 0;
+            });
+        }
+
+        const sortedOrders = [...codOrders, ...bankOrders];
+
+        const txtContent = convertToYayoi(sortedOrders, { denpyoNoStart, tantoshaCode });
         const filename = `ya_sales_${getDateString()}.txt`;
         downloadAsShiftJIS(txtContent, filename);
 
-        showStatus(`✅ 売上伝票TXTファイルを出力しました（${selectedOrders.length}件）`, 'success');
+        showStatus(`✅ 売上伝票TXTファイルを出力しました（${sortedOrders.length}件）`, 'success');
     } catch (error) {
         showStatus(`❌ 変換エラー: ${error.message}`, 'error');
     }
