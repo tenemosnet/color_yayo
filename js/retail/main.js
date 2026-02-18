@@ -898,7 +898,12 @@ function sortOrdersForExport(orders, bankMatches) {
             const matchB = bankMatches.get(b._originalIndex);
             const dateA = matchA ? matchA.deposit.date : '';
             const dateB = matchB ? matchB.deposit.date : '';
-            if (dateA && dateB) return dateB.localeCompare(dateA);
+            if (dateA && dateB) {
+                const dateCmp = dateB.localeCompare(dateA);
+                if (dateCmp !== 0) return dateCmp;
+                // 同日内はゆうちょCSV記載順（通帳順）の降順
+                return (matchB.depositIndex || 0) - (matchA.depositIndex || 0);
+            }
             if (dateA) return -1;
             if (dateB) return 1;
             return 0;
