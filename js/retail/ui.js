@@ -119,7 +119,7 @@ export function displayNewCustomers(customers) {
 /**
  * 受注データリストを表示
  */
-export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
+export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, denpyoNoMap = null) {
     const section = document.getElementById('ordersSection');
     const list = document.getElementById('ordersList');
 
@@ -160,12 +160,17 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
     if (bankMatches) {
         html += `<button id="sortBankBtn" class="sort-btn sort-btn-bank${bankActive}">📅 振込日順</button>`;
     }
+    const denpyoActive = denpyoNoMap ? ' active' : '';
+    html += `<button id="showDenpyoNoBtn" class="sort-btn sort-btn-denpyo${denpyoActive}">📋 予定伝票No</button>`;
     html += '</div>';
 
     html += '<table class="orders-table"><thead><tr>';
     html += '<th class="checkbox-cell"><input type="checkbox" id="selectAllOrders" /></th>';
     html += '<th style="width: 100px;">売上ID</th>';
     html += '<th style="width: 100px;">受注日</th>';
+    if (denpyoNoMap) {
+        html += '<th style="width: 70px;">伝票No</th>';
+    }
     html += '<th style="width: 120px;">名前</th>';
     html += '<th style="width: 60px;">商品<br>点数</th>';
     html += '<th style="width: 90px;">売上合計</th>';
@@ -247,7 +252,8 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null) {
                 <input type="checkbox" id="orderCheck_${originalIndex}" data-index="${originalIndex}" ${defaultChecked} />
             </td>
             <td class="sales-id-cell" style="font-weight: bold;">${order.salesId}</td>
-            <td>${order.orderDate}</td>
+            <td>${order.orderDate}</td>${denpyoNoMap ? `
+            <td style="text-align: center; font-weight: bold; color: #1565c0;">${denpyoNoMap.get(originalIndex) || ''}</td>` : ''}
             <td class="customer-name-cell" style="font-weight: bold;">${order.customerName}</td>
             <td style="text-align: center;">${itemCount}</td>
             <td class="amount-cell" style="font-weight: bold;">¥${total.toLocaleString()}</td>

@@ -20,6 +20,7 @@ let newCustomersList = [];
 let displayedOrders = [];
 let currentSortOrder = 'desc';
 let currentBankMatches = null; // ゆうちょ入金照合結果
+let currentDenpyoNoMap = null; // 予定売上伝票No表示用
 
 // ページ読み込み時の初期化
 window.addEventListener('DOMContentLoaded', () => {
@@ -467,7 +468,7 @@ function renderOrderList(preserveChecks) {
         });
     }
 
-    displayedOrders = displayOrders(colormeOrders, currentSortOrder, currentBankMatches);
+    displayedOrders = displayOrders(colormeOrders, currentSortOrder, currentBankMatches, currentDenpyoNoMap);
 
     // チェック状態の復元
     if (checkedMap) {
@@ -503,6 +504,9 @@ function renderOrderList(preserveChecks) {
             renderOrderList(true);
         }
     });
+
+    // 予定売上伝票Noボタン
+    document.getElementById('showDenpyoNoBtn')?.addEventListener('click', handleToggleDenpyoNo);
 
     // 候補バッジのクリックイベント
     document.querySelectorAll('.bank-candidate-clickable').forEach(el => {
@@ -869,16 +873,82 @@ function handleUpdateCustomerList() {
 }
 
 /**
- * 変換処理を実行
+ * チェック済み受注を取得（元インデックス付き）
  */
-function handleConvert() {
-    // チェックされた受注のみを変換（元インデックスを保持）
-    const selectedOrders = colormeOrders
+function getSelectedOrders() {
+    return colormeOrders
         .map((order, index) => ({ ...order, _originalIndex: index }))
         .filter(order => {
             const checkbox = document.getElementById(`orderCheck_${order._originalIndex}`);
             return checkbox && checkbox.checked;
         });
+}
+
+/**
+ * 受注を伝票出力順にソート: 代引き先 → 振込後（入金日新しい順）
+ */
+function sortOrdersForExport(orders, bankMatches) {
+    const isCOD = (o) => o.paymentMethod.includes('代引') || (o.paymentFee > 0);
+    const codOrders = orders.filter(o => isCOD(o));
+    const bankOrders = orders.filter(o => !isCOD(o));
+
+    if (bankMatches) {
+        bankOrders.sort((a, b) => {
+            const matchA = bankMatches.get(a._originalIndex);
+            const matchB = bankMatches.get(b._originalIndex);
+            const dateA = matchA ? matchA.deposit.date : '';
+            const dateB = matchB ? matchB.deposit.date : '';
+            if (dateA && dateB) return dateB.localeCompare(dateA);
+            if (dateA) return -1;
+            if (dateB) return 1;
+            return 0;
+        });
+    }
+
+    return [...codOrders, ...bankOrders];
+}
+
+/**
+ * 予定売上伝票No表示のトグル
+ */
+function handleToggleDenpyoNo() {
+    // トグル: 表示中なら非表示に
+    if (currentDenpyoNoMap) {
+        currentDenpyoNoMap = null;
+        renderOrderList(true);
+        return;
+    }
+
+    const denpyoNoStart = document.getElementById('denpyoNoStart')?.value.trim();
+    if (!denpyoNoStart) {
+        showStatus('⚠️ 伝票番号（開始番号）を入力してください', 'error');
+        return;
+    }
+
+    const selectedOrders = getSelectedOrders();
+    if (selectedOrders.length === 0) {
+        showStatus('⚠️ 変換する受注を選択してください', 'error');
+        return;
+    }
+
+    const sortedOrders = sortOrdersForExport(selectedOrders, currentBankMatches);
+
+    // Map<originalIndex, 伝票番号文字列> を生成
+    currentDenpyoNoMap = new Map();
+    let currentNo = parseInt(denpyoNoStart) || 1;
+    sortedOrders.forEach(order => {
+        currentDenpyoNoMap.set(order._originalIndex, String(currentNo).padStart(4, '0'));
+        currentNo++;
+    });
+
+    renderOrderList(true);
+}
+
+/**
+ * 変換処理を実行
+ */
+function handleConvert() {
+    const selectedOrders = getSelectedOrders();
 
     if (selectedOrders.length === 0) {
         showStatus('⚠️ 変換する受注を選択してください', 'error');
@@ -894,27 +964,7 @@ function handleConvert() {
 
     try {
         const tantoshaCode = '11'; // 固定値
-
-        // 伝票並び順ソート: 代引き先 → 振込後
-        const isCOD = (o) => o.paymentMethod.includes('代引') || (o.paymentFee > 0);
-        const codOrders = selectedOrders.filter(o => isCOD(o));
-        const bankOrders = selectedOrders.filter(o => !isCOD(o));
-
-        // ゆうちょデータあり: 振込グループを入金日の新しい順でソート
-        if (currentBankMatches) {
-            bankOrders.sort((a, b) => {
-                const matchA = currentBankMatches.get(a._originalIndex);
-                const matchB = currentBankMatches.get(b._originalIndex);
-                const dateA = matchA ? matchA.deposit.date : '';
-                const dateB = matchB ? matchB.deposit.date : '';
-                if (dateA && dateB) return dateB.localeCompare(dateA);
-                if (dateA) return -1;
-                if (dateB) return 1;
-                return 0;
-            });
-        }
-
-        const sortedOrders = [...codOrders, ...bankOrders];
+        const sortedOrders = sortOrdersForExport(selectedOrders, currentBankMatches);
 
         const txtContent = convertToYayoi(sortedOrders, { denpyoNoStart, tantoshaCode });
         const filename = `ya_sales_${getDateString()}.txt`;
