@@ -208,9 +208,11 @@ export function matchDepositsToOrders(deposits, orders) {
             // 金額一致だが名前不一致 → 候補（ただし名前類似度が低ければスキップ）
             const depositNameNorm = normalizeName(deposit.name);
 
-            // ノンペア判定: 共通文字が4文字未満ならスキップ
+            // ノンペア判定: 共通文字4文字以上 or 姓名パーツ一致
             if (!hasNameOverlap(depositNameNorm, orderNameNorm) &&
-                !hasNameOverlap(depositNameNorm, orderFuriganaNorm)) {
+                !hasNameOverlap(depositNameNorm, orderFuriganaNorm) &&
+                !hasNamePartMatch(deposit.name, order.customerName) &&
+                !hasNamePartMatch(deposit.name, order.furigana)) {
                 continue;
             }
 
@@ -250,9 +252,11 @@ export function matchDepositsToOrders(deposits, orders) {
 
             const depositNameNorm = normalizeName(deposit.name);
 
-            // 名前部分一致（共通4文字以上）
+            // 名前部分一致（共通4文字以上 or 姓名パーツ一致）
             if (!hasNameOverlap(depositNameNorm, orderNameNorm) &&
-                !hasNameOverlap(depositNameNorm, orderFuriganaNorm)) {
+                !hasNameOverlap(depositNameNorm, orderFuriganaNorm) &&
+                !hasNamePartMatch(deposit.name, order.customerName) &&
+                !hasNamePartMatch(deposit.name, order.furigana)) {
                 continue;
             }
 
@@ -312,6 +316,36 @@ function hasNameOverlap(a, b) {
         if (setB.has(ch)) count++;
     }
     return count >= 4;
+}
+
+/**
+ * 名前を姓名パーツに分割して正規化する
+ * @param {string} name - 元の名前（スペース区切り）
+ * @returns {string[]} 正規化済みパーツの配列
+ */
+function splitAndNormalizeName(name) {
+    if (!name) return [];
+    return name.trim().split(/[\s　]+/).map(p => normalizeName(p)).filter(p => p);
+}
+
+/**
+ * 姓または名のパーツ単位で一致するか判定
+ * 例: 「宮本 浩子」vs「宮本 ミント」→ 姓「宮本」一致 → true
+ * 例: 「田中 浩子」vs「宮本 浩子」→ 名「浩子」一致 → true
+ * @param {string} nameA - 元の名前A（スペース区切り）
+ * @param {string} nameB - 元の名前B（スペース区切り）
+ * @returns {boolean} いずれかのパーツが一致すればtrue
+ */
+function hasNamePartMatch(nameA, nameB) {
+    const partsA = splitAndNormalizeName(nameA);
+    const partsB = splitAndNormalizeName(nameB);
+    if (partsA.length === 0 || partsB.length === 0) return false;
+    for (const pa of partsA) {
+        for (const pb of partsB) {
+            if (pa === pb) return true;
+        }
+    }
+    return false;
 }
 
 /**

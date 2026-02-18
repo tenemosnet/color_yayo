@@ -218,13 +218,18 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, de
             });
         }
 
+        // 照合方法の短縮表記
+        const matchLabel = order.matchMethod === 'メールアドレス一致' ? 'メ一致'
+            : order.matchMethod === '電話番号一致' ? '電一致'
+            : order.matchMethod === '顧客名一致' ? '名一致' : '';
+
         let statusBadge;
         if (order.matchedCustomer) {
             if (order.matchWarnings && order.matchWarnings.length > 0) {
                 const warningTitles = order.matchWarnings.map(w => `${w.label}: ${w.detail}`).join('&#10;');
-                statusBadge = `<span class="status-badge warning" title="${warningTitles}">⚡ 要確認</span>`;
+                statusBadge = `<span class="status-badge warning" title="${warningTitles}">⚡ 要確認</span><br><span style="font-size:10px;color:#888;">${matchLabel}</span>`;
             } else {
-                statusBadge = '<span class="status-badge existing">✅ 既存</span>';
+                statusBadge = `<span class="status-badge existing">✅ 既存</span><br><span style="font-size:10px;color:#888;">${matchLabel}</span>`;
             }
         } else {
             statusBadge = '<span class="status-badge new">⚠️ 新規</span>';

@@ -924,15 +924,15 @@ function handleToggleDenpyoNo() {
         return;
     }
 
-    const denpyoNoStart = document.getElementById('denpyoNoStart')?.value.trim();
-    if (!denpyoNoStart) {
-        showStatus('⚠️ 伝票番号（開始番号）を入力してください', 'error');
+    const selectedOrders = getSelectedOrders();
+    if (selectedOrders.length === 0) {
+        alert('変換する受注をチェックしてください');
         return;
     }
 
-    const selectedOrders = getSelectedOrders();
-    if (selectedOrders.length === 0) {
-        showStatus('⚠️ 変換する受注を選択してください', 'error');
+    const denpyoNoStart = document.getElementById('denpyoNoStart')?.value.trim();
+    if (!denpyoNoStart) {
+        alert('伝票番号（開始番号）を入力してください\n\n変換セクションの「伝票番号（開始番号）」欄に弥生販売の売上伝票新規番号を入力してください。');
         return;
     }
 
