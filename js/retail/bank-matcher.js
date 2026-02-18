@@ -225,6 +225,48 @@ export function matchDepositsToOrders(deposits, orders) {
         }
     }
 
+    // Pass 4: 金額不一致（差額¥1,000以内）+ 名前部分一致（amount_mismatch）
+    // 結婚による姓変更、活動名での注文など名前が完全一致しないケース
+    for (let oi = 0; oi < orders.length; oi++) {
+        if (matches.has(oi)) continue;
+
+        const order = orders[oi];
+        if (isCODOrder(order)) continue;
+
+        const total = orderTotals[oi];
+        const orderNameNorm = normalizeName(order.customerName);
+        const orderFuriganaNorm = normalizeName(order.furigana);
+
+        for (let di = 0; di < deposits.length; di++) {
+            if (usedDeposits.has(di)) continue;
+
+            const deposit = deposits[di];
+            // 金額が同じなら Pass 1/3 で処理済み → 不一致のみ対象
+            if (deposit.amount === total) continue;
+
+            // 差額が¥1,000を超える場合はスキップ（送料誤差の範囲外）
+            const diff = deposit.amount - total;
+            if (Math.abs(diff) > 1000) continue;
+
+            const depositNameNorm = normalizeName(deposit.name);
+
+            // 名前部分一致（共通4文字以上）
+            if (!hasNameOverlap(depositNameNorm, orderNameNorm) &&
+                !hasNameOverlap(depositNameNorm, orderFuriganaNorm)) {
+                continue;
+            }
+
+            const reasons = [
+                '名前部分一致・金額不一致（差額¥1,000以内）',
+                `振込: ${deposit.name} / 受注: ${order.customerName}`,
+                `受注額: ¥${total.toLocaleString()} / 入金額: ¥${deposit.amount.toLocaleString()}（差額: ${diff > 0 ? '+' : ''}¥${diff.toLocaleString()}）`
+            ];
+            matches.set(oi, { status: 'amount_mismatch', deposit, depositIndex: di, reasons });
+            usedDeposits.add(di);
+            break;
+        }
+    }
+
     // 未照合の入金レコードを収集
     const unmatchedDeposits = deposits.filter((_, di) => !usedDeposits.has(di));
 
