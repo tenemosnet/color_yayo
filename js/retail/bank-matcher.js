@@ -148,8 +148,44 @@ export function matchDepositsToOrders(deposits, orders) {
         }
     }
 
-    // Pass 2: 金額のみ一致（candidate）— 理由を記録
-    // ※名前の類似度がゼロの場合はペアリングしない（ノンペア判定）
+    // Pass 2: 名前一致・金額不一致（amount_mismatch）— 入金額誤りの可能性
+    // ※名前完全一致は信頼度が高いため、金額あいまい一致（Pass 3）より先に判定
+    for (let oi = 0; oi < orders.length; oi++) {
+        if (matches.has(oi)) continue;
+
+        const order = orders[oi];
+        if (isCODOrder(order)) continue;
+
+        const total = orderTotals[oi];
+        const orderNameNorm = normalizeName(order.customerName);
+        const orderFuriganaNorm = normalizeName(order.furigana);
+
+        for (let di = 0; di < deposits.length; di++) {
+            if (usedDeposits.has(di)) continue;
+
+            const deposit = deposits[di];
+            // 金額が同じなら Pass 1 で処理済みのはず → 金額不一致のみ対象
+            if (deposit.amount === total) continue;
+
+            const depositNameNorm = normalizeName(deposit.name);
+
+            // 名前一致（漢字名 or フリガナ）
+            if (depositNameNorm === orderNameNorm ||
+                depositNameNorm === orderFuriganaNorm) {
+                const diff = deposit.amount - total;
+                const reasons = [
+                    '名前一致・金額不一致',
+                    `受注額: ¥${total.toLocaleString()} / 入金額: ¥${deposit.amount.toLocaleString()}（差額: ${diff > 0 ? '+' : ''}¥${diff.toLocaleString()}）`
+                ];
+                matches.set(oi, { status: 'amount_mismatch', deposit, depositIndex: di, reasons });
+                usedDeposits.add(di);
+                break;
+            }
+        }
+    }
+
+    // Pass 3: 金額のみ一致（candidate）— 理由を記録
+    // ※名前の類似度が低い場合はペアリングしない（ノンペア判定: 共通文字4文字以上）
     for (let oi = 0; oi < orders.length; oi++) {
         if (matches.has(oi)) continue;
 
@@ -169,10 +205,10 @@ export function matchDepositsToOrders(deposits, orders) {
             // 受注日より前の入金はペアリング対象外（日付部分のみ、区切り文字を統一して比較）
             if (order.orderDate && deposit.date < order.orderDate.slice(0, 10).replace(/\//g, '-')) continue;
 
-            // 金額一致だが名前不一致 → 候補（ただし名前類似度ゼロはスキップ）
+            // 金額一致だが名前不一致 → 候補（ただし名前類似度が低ければスキップ）
             const depositNameNorm = normalizeName(deposit.name);
 
-            // ノンペア判定: 名前に共通文字が1文字もなければスキップ
+            // ノンペア判定: 共通文字が4文字未満ならスキップ
             if (!hasNameOverlap(depositNameNorm, orderNameNorm) &&
                 !hasNameOverlap(depositNameNorm, orderFuriganaNorm)) {
                 continue;
@@ -186,41 +222,6 @@ export function matchDepositsToOrders(deposits, orders) {
             matches.set(oi, { status: 'candidate', deposit, depositIndex: di, reasons });
             usedDeposits.add(di);
             break;
-        }
-    }
-
-    // Pass 3: 名前一致・金額不一致（amount_mismatch）— 入金額誤りの可能性
-    for (let oi = 0; oi < orders.length; oi++) {
-        if (matches.has(oi)) continue;
-
-        const order = orders[oi];
-        if (isCODOrder(order)) continue;
-
-        const total = orderTotals[oi];
-        const orderNameNorm = normalizeName(order.customerName);
-        const orderFuriganaNorm = normalizeName(order.furigana);
-
-        for (let di = 0; di < deposits.length; di++) {
-            if (usedDeposits.has(di)) continue;
-
-            const deposit = deposits[di];
-            // 金額が同じなら Pass 1/2 で処理済みのはず → 金額不一致のみ対象
-            if (deposit.amount === total) continue;
-
-            const depositNameNorm = normalizeName(deposit.name);
-
-            // 名前一致（漢字名 or フリガナ）
-            if (depositNameNorm === orderNameNorm ||
-                depositNameNorm === orderFuriganaNorm) {
-                const diff = deposit.amount - total;
-                const reasons = [
-                    '名前一致・金額不一致',
-                    `受注額: ¥${total.toLocaleString()} / 入金額: ¥${deposit.amount.toLocaleString()}（差額: ${diff > 0 ? '+' : ''}¥${diff.toLocaleString()}）`
-                ];
-                matches.set(oi, { status: 'amount_mismatch', deposit, depositIndex: di, reasons });
-                usedDeposits.add(di);
-                break;
-            }
         }
     }
 
