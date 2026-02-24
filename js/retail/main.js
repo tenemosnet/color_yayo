@@ -885,30 +885,12 @@ function getSelectedOrders() {
 }
 
 /**
- * 受注を伝票出力順にソート: 代引き先 → 振込後（入金日新しい順）
+ * 受注を伝票出力順にソート: 代引き先 → 振込後（カラーミー受注順）
  */
-function sortOrdersForExport(orders, bankMatches) {
+function sortOrdersForExport(orders) {
     const isCOD = (o) => o.paymentMethod.includes('代引') || (o.paymentFee > 0);
     const codOrders = orders.filter(o => isCOD(o));
     const bankOrders = orders.filter(o => !isCOD(o));
-
-    if (bankMatches) {
-        bankOrders.sort((a, b) => {
-            const matchA = bankMatches.get(a._originalIndex);
-            const matchB = bankMatches.get(b._originalIndex);
-            const dateA = matchA ? matchA.deposit.date : '';
-            const dateB = matchB ? matchB.deposit.date : '';
-            if (dateA && dateB) {
-                const dateCmp = dateB.localeCompare(dateA);
-                if (dateCmp !== 0) return dateCmp;
-                // 同日内はゆうちょCSV記載順（通帳順）の降順
-                return (matchB.depositIndex || 0) - (matchA.depositIndex || 0);
-            }
-            if (dateA) return -1;
-            if (dateB) return 1;
-            return 0;
-        });
-    }
 
     return [...codOrders, ...bankOrders];
 }
@@ -936,7 +918,7 @@ function handleToggleDenpyoNo() {
         return;
     }
 
-    const sortedOrders = sortOrdersForExport(selectedOrders, currentBankMatches);
+    const sortedOrders = sortOrdersForExport(selectedOrders);
 
     // Map<originalIndex, 伝票番号文字列> を生成
     currentDenpyoNoMap = new Map();
@@ -969,7 +951,7 @@ function handleConvert() {
 
     try {
         const tantoshaCode = '11'; // 固定値
-        const sortedOrders = sortOrdersForExport(selectedOrders, currentBankMatches);
+        const sortedOrders = sortOrdersForExport(selectedOrders);
 
         const txtContent = convertToYayoi(sortedOrders, { denpyoNoStart, tantoshaCode });
         const filename = `ya_sales_${getDateString()}.txt`;
