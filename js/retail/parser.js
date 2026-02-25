@@ -198,6 +198,22 @@ export function parseColorMeCSV(csvText) {
     }
     
     const orders = Array.from(ordersMap.values());
+
+    // ネコポス判定
+    orders.forEach(order => {
+        order.isNekopos = false;
+        if (order.shippingFee === 385) {
+            // パターン1: 送料385円 = ネコポス
+            order.isNekopos = true;
+        } else if (order.shippingFee === 0) {
+            // パターン2: 送料無料 + 商品コード1382（アリビダ）のみ
+            const allAribida = order.items.length > 0 && order.items.every(item => item.productCode === '1382');
+            if (allAribida) {
+                order.isNekopos = true;
+            }
+        }
+    });
+
     console.log(`受注データ読み込み完了: ${orders.length}件`);
     return orders;
 }
