@@ -11,6 +11,20 @@ function cleanPhone(phone) {
 }
 
 /**
+ * 住所の先頭8文字比較（都道府県+住所を結合して比較）
+ * @param {Object} colormeCustomer - カラーミーの顧客情報
+ * @param {Object} yayoiCustomer - 弥生販売の顧客情報
+ * @returns {boolean}
+ */
+function isAddressSimilar(colormeCustomer, yayoiCustomer) {
+    const cmPref = (colormeCustomer.prefecture || '').trim();
+    const cmAddr = `${cmPref}${(colormeCustomer.address || '').trim()}`;
+    const yaAddr = (yayoiCustomer.address1 || '').trim();
+    if (!cmAddr || !yaAddr) return false;
+    return cmAddr.substring(0, 8) === yaAddr.substring(0, 8);
+}
+
+/**
  * 照合済み顧客の情報差異を検出
  * @param {Object} colormeCustomer - カラーミーの顧客情報
  * @param {Object} yayoiCustomer - 弥生販売の顧客情報
@@ -87,12 +101,33 @@ export function matchCustomer(colormeCustomer, yayoiCustomers) {
         }
     }
 
-    // 優先度3: 顧客名（完全一致）
+    // 優先度3: 顧客名（完全一致）+ 住所確認
+    // ※ここに到達した時点でメール・電話の照合は失敗済み
     if (colormeCustomer.customerName) {
-        const match = yayoiCustomers.find(y =>
+        const nameMatches = yayoiCustomers.filter(y =>
             y.name && y.name === colormeCustomer.customerName
         );
-        if (match) return { customer: match, method: '顧客名一致', warnings: [] };
+
+        if (nameMatches.length > 0) {
+            const addressMatches = nameMatches.filter(y => isAddressSimilar(colormeCustomer, y));
+
+            if (addressMatches.length >= 2) {
+                // ケースC: 同名同住所が複数 → 弥生の重複登録と判断。最初の1件にマッチ＋警告
+                return {
+                    customer: addressMatches[0],
+                    method: '顧客名+住所一致',
+                    warnings: [{
+                        type: 'yayoi_duplicate',
+                        label: '弥生データに重複登録の可能性',
+                        detail: `「${colormeCustomer.customerName}」が弥生に${addressMatches.length}件登録されています。弥生データの見直しをお勧めします。`
+                    }]
+                };
+            }
+
+            // ケースA (住所一致1件): 携帯・メール変更の同一人物と推定されるが確認不可 → 新規扱い
+            // ケースB (住所一致0件): 同姓同名の別人と判断 → 新規扱い
+            return null;
+        }
     }
 
     // 照合失敗
