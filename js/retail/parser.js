@@ -107,6 +107,7 @@ export function parseColorMeCSV(csvText) {
         customerId: headers.indexOf('購入者 顧客ID'),
         customerName: headers.indexOf('購入者 名前'),
         furigana: headers.indexOf('配送先 フリガナ'),
+        deliveryName: headers.indexOf('配送先 名前'),
         zip: headers.indexOf('購入者 郵便番号'),
         prefecture: headers.indexOf('購入者 都道府県'),
         address: headers.indexOf('購入者 住所'),
@@ -158,13 +159,22 @@ export function parseColorMeCSV(csvText) {
         if (!salesId) continue;
         
         if (!ordersMap.has(salesId)) {
+            // 購入者名と配送先名を比較（スペース除去後）
+            // 一致する場合のみ配送先フリガナを購入者フリガナとして使用
+            // 不一致の場合（会社・親族等への配送）は空にして誤フリガナ登録を防止
+            const buyerName = (columns[indices.customerName] || '').replace(/[\s　]/g, '');
+            const dlName = (columns[indices.deliveryName] || '').replace(/[\s　]/g, '');
+            const buyerFurigana = (buyerName && dlName && buyerName === dlName)
+                ? (columns[indices.furigana] || '')
+                : '';
+
             ordersMap.set(salesId, {
                 salesId: salesId,
                 deliveryId: columns[indices.deliveryId] || '',
                 orderDate: columns[indices.orderDate] || '',
                 customerId: columns[indices.customerId] || '',
                 customerName: columns[indices.customerName] || '',
-                furigana: columns[indices.furigana] || '',
+                furigana: buyerFurigana,
                 zip: columns[indices.zip] || '',
                 prefecture: columns[indices.prefecture] || '',
                 address: columns[indices.address] || '',

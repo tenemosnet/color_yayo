@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-カラーミーショップの受注データと卸売注文を弥生販売の売上伝票形式に変換するWebアプリケーション。ブラウザベースのES6 Modulesアプリケーション（v5.7）。ビルド不要。
+カラーミーショップの受注データと卸売注文を弥生販売の売上伝票形式に変換するWebアプリケーション。ブラウザベースのES6 Modulesアプリケーション（v5.8）。ビルド不要。
 
 ## コマンド
 

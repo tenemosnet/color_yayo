@@ -227,6 +227,51 @@ export function matchDepositsToOrders(deposits, orders) {
         }
     }
 
+    // Pass 3.5: 漢字名のみ（カナ比較不可）+ 同額未ペア入金が残り1件のみ → 候補
+    // 購入者名が漢字のみの場合、ゆうちょ振込の半角カナとの文字比較が不可能。
+    // ただし他のパスで名前一致した入金が消費済みの中で、同額が1件のみ残った場合は
+    // その入金が当該受注のものである可能性が極めて高い（同額2件以上の場合はスキップ）。
+    for (let oi = 0; oi < orders.length; oi++) {
+        if (matches.has(oi)) continue;
+
+        const order = orders[oi];
+        if (isCODOrder(order)) continue;
+
+        const orderNameNorm = normalizeName(order.customerName);
+        const orderFuriganaNorm = normalizeName(order.furigana);
+        // 購入者名が漢字のみ かつ フリガナにも半角カタカナがない場合のみ対象
+        // （フリガナにカナがあればPass3でカナ比較できるため除外）
+        if (/[\uFF61-\uFF9F]/.test(orderNameNorm)) continue;
+        if (/[\uFF61-\uFF9F]/.test(orderFuriganaNorm)) continue;
+
+        const total = orderTotals[oi];
+
+        // 同額の未使用入金を全件収集
+        const sameAmountDeposits = [];
+        for (let di = 0; di < deposits.length; di++) {
+            if (usedDeposits.has(di)) continue;
+            const deposit = deposits[di];
+            if (deposit.amount !== total) continue;
+            if (order.orderDate && deposit.date < order.orderDate.slice(0, 10).replace(/\//g, '-')) continue;
+            sameAmountDeposits.push({ deposit, di });
+        }
+
+        // 残り1件のみの場合にマッチ（2件以上は誤ペアリングリスクがあるためスキップ）
+        if (sameAmountDeposits.length !== 1) continue;
+
+        const { deposit, di } = sameAmountDeposits[0];
+        matches.set(oi, {
+            status: 'candidate',
+            deposit,
+            depositIndex: di,
+            reasons: [
+                '金額一致（漢字名のみ・カナ比較不可）',
+                `振込名: ${deposit.name} / 受注名: ${order.customerName}`
+            ]
+        });
+        usedDeposits.add(di);
+    }
+
     // Pass 4: 金額不一致（差額¥1,000以内）+ 名前部分一致（amount_mismatch）
     // 結婚による姓変更、活動名での注文など名前が完全一致しないケース
     for (let oi = 0; oi < orders.length; oi++) {
