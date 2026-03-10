@@ -48,8 +48,8 @@ function detectDiscrepancies(colormeCustomer, yayoiCustomer, matchMethod) {
         });
     }
 
-    // 住所の差異チェック（電話番号一致時のみ）
-    if (matchMethod === '電話番号一致') {
+    // 住所の差異チェック（メールアドレス一致・電話番号一致の両方で実施）
+    if (matchMethod === 'メールアドレス一致' || matchMethod === '電話番号一致') {
         const cmPref = (colormeCustomer.prefecture || '').trim();
         const yaPref = (yayoiCustomer.prefecture || '').trim();
         const cmAddr = `${cmPref}${(colormeCustomer.address || '').trim()}`;
