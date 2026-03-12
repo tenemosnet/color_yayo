@@ -31,7 +31,7 @@ export const VENDORS = {
     },
     OPTIMAL: {
         code: '000913',
-        nounyuCode: '003',
+        nounyuCode: '002',
         detect: {
             type: 'fax',
             keywords: ['オプティマルライフ', 'オプティマル', 'ｵﾌﾟﾃｨﾏﾙﾗｲﾌ', 'ｵﾌﾟﾃｨﾏﾙ']
@@ -47,7 +47,7 @@ export const VENDORS = {
     },
     MOTHERS_I: {
         code: '007025',
-        nounyuCode: '030',
+        nounyuCode: '002',
         detect: { type: 'eml' },
         domain: 'mothers-lunch',
         japaneseName: "MOTHER'S・I"
