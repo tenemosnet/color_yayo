@@ -21,6 +21,7 @@ let displayedOrders = [];
 let currentSortOrder = 'desc';
 let currentBankMatches = null; // ゆうちょ入金照合結果
 let currentDenpyoNoMap = null; // 予定売上伝票No表示用
+let currentShowDeliveryTime = false; // 配送希望時間表示フラグ
 
 // ページ読み込み時の初期化
 window.addEventListener('DOMContentLoaded', () => {
@@ -468,7 +469,7 @@ function renderOrderList(preserveChecks) {
         });
     }
 
-    displayedOrders = displayOrders(colormeOrders, currentSortOrder, currentBankMatches, currentDenpyoNoMap);
+    displayedOrders = displayOrders(colormeOrders, currentSortOrder, currentBankMatches, currentDenpyoNoMap, currentShowDeliveryTime);
 
     // チェック状態の復元
     if (checkedMap) {
@@ -507,6 +508,12 @@ function renderOrderList(preserveChecks) {
 
     // 予定売上伝票Noボタン
     document.getElementById('showDenpyoNoBtn')?.addEventListener('click', handleToggleDenpyoNo);
+
+    // 配送希望表示ボタン
+    document.getElementById('showDeliveryTimeBtn')?.addEventListener('click', () => {
+        currentShowDeliveryTime = !currentShowDeliveryTime;
+        renderOrderList(true);
+    });
 
     // 候補バッジのクリックイベント
     document.querySelectorAll('.bank-candidate-clickable').forEach(el => {

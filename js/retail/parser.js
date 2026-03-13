@@ -124,9 +124,11 @@ export function parseColorMeCSV(csvText) {
         unitPrice: headers.indexOf('購入商品 販売価格(消費税込)'),
         quantity: headers.indexOf('購入商品 販売個数'),
         subtotal: headers.indexOf('購入商品 小計'),
-        deliveryId: headers.indexOf('配送先ID')
+        deliveryId: headers.indexOf('配送先ID'),
+        deliveryDate: headers.indexOf('配送希望日'),
+        deliveryTime: headers.indexOf('配送希望時間')
     };
-    
+
     // 売上詳細CSV（sales_detail.csv）の場合のカラム（後方互換性）
     if (indices.salesId === -1) {
         indices.salesId = headers.indexOf('売上ID');
@@ -186,6 +188,8 @@ export function parseColorMeCSV(csvText) {
                 shippingFee: parseFloat(columns[indices.shippingFee]) || 0,
                 discountName: columns[indices.discountName] || '',
                 discountAmount: parseFloat(columns[indices.discountAmount]) || 0,
+                deliveryDate: columns[indices.deliveryDate] || '',
+                deliveryTime: columns[indices.deliveryTime] || '',
                 items: [],
                 tokuisakiCode: '',
                 matchedCustomer: null,

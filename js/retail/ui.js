@@ -117,9 +117,22 @@ export function displayNewCustomers(customers) {
 }
 
 /**
+ * 配送希望情報をフォーマット
+ */
+function formatDeliveryInfo(order) {
+    const date = order.deliveryDate && order.deliveryDate !== '設定なし' ? order.deliveryDate : '';
+    const time = order.deliveryTime || '';
+    if (!date && !time) return '<span style="color:#ccc;">−</span>';
+    const parts = [];
+    if (date) parts.push(date);
+    if (time) parts.push(`<span style="font-weight:bold;color:#1565c0;">${time}</span>`);
+    return parts.join('<br>');
+}
+
+/**
  * 受注データリストを表示
  */
-export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, denpyoNoMap = null) {
+export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, denpyoNoMap = null, showDeliveryTime = false) {
     const section = document.getElementById('ordersSection');
     const list = document.getElementById('ordersList');
 
@@ -162,6 +175,8 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, de
     }
     const denpyoActive = denpyoNoMap ? ' active' : '';
     html += `<button id="showDenpyoNoBtn" class="sort-btn sort-btn-denpyo${denpyoActive}">📋 予定伝票No</button>`;
+    const deliveryActive = showDeliveryTime ? ' active' : '';
+    html += `<button id="showDeliveryTimeBtn" class="sort-btn sort-btn-delivery${deliveryActive}">🚚 配送希望</button>`;
     html += '</div>';
 
     html += '<table class="orders-table"><thead><tr>';
@@ -172,6 +187,9 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, de
         html += '<th style="width: 70px;">伝票No</th>';
     }
     html += '<th style="width: 120px;">名前</th>';
+    if (showDeliveryTime) {
+        html += '<th style="width: 100px;">配送希望</th>';
+    }
     html += '<th style="width: 60px;">商品<br>点数</th>';
     html += '<th style="width: 90px;">売上合計</th>';
     html += '<th style="width: 90px;">決済方法</th>';
@@ -259,7 +277,8 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, de
             <td class="sales-id-cell" style="font-weight: bold;">${order.salesId}</td>
             <td>${order.orderDate}</td>${denpyoNoMap ? `
             <td style="text-align: center; font-weight: bold; color: #1565c0;">${denpyoNoMap.get(originalIndex) || ''}</td>` : ''}
-            <td class="customer-name-cell" style="font-weight: bold;">${order.customerName}${order.isNekopos ? '<br><span style="font-size:10px;color:#ff6f00;font-weight:bold;">✉️ ネコポス</span>' : ''}</td>
+            <td class="customer-name-cell" style="font-weight: bold;">${order.customerName}${order.isNekopos ? '<br><span style="font-size:10px;color:#ff6f00;font-weight:bold;">✉️ ネコポス</span>' : ''}</td>${showDeliveryTime ? `
+            <td style="font-size: 11px; text-align: center;">${formatDeliveryInfo(order)}</td>` : ''}
             <td style="text-align: center;">${itemCount}</td>
             <td class="amount-cell" style="font-weight: bold;">¥${total.toLocaleString()}</td>
             <td style="${paymentColor} font-weight: bold;">${paymentDisplay}</td>
