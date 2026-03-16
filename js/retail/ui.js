@@ -132,7 +132,7 @@ function formatDeliveryInfo(order) {
 /**
  * 受注データリストを表示
  */
-export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, denpyoNoMap = null, showDeliveryTime = false) {
+export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, denpyoNoMap = null, showDeliveryTime = false, checkedSet = null) {
     const section = document.getElementById('ordersSection');
     const list = document.getElementById('ordersList');
 
@@ -278,7 +278,7 @@ export function displayOrders(orders, sortOrder = 'desc', bankMatches = null, de
             <td>${order.orderDate}</td>${denpyoNoMap ? `
             <td style="text-align: center; font-weight: bold; color: #1565c0;">${denpyoNoMap.get(originalIndex) || ''}</td>` : ''}
             <td class="customer-name-cell" style="font-weight: bold;">${order.customerName}${order.isNekopos ? '<br><span style="font-size:10px;color:#ff6f00;font-weight:bold;">✉️ ネコポス</span>' : ''}</td>${showDeliveryTime ? `
-            <td style="font-size: 11px; text-align: center;">${formatDeliveryInfo(order)}</td>` : ''}
+            <td style="font-size: 11px; text-align: center;">${(!checkedSet || checkedSet.has(originalIndex)) ? formatDeliveryInfo(order) : '<span style="color:#ccc;">−</span>'}</td>` : ''}
             <td style="text-align: center;">${itemCount}</td>
             <td class="amount-cell" style="font-weight: bold;">¥${total.toLocaleString()}</td>
             <td style="${paymentColor} font-weight: bold;">${paymentDisplay}</td>

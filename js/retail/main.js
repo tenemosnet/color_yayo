@@ -469,7 +469,12 @@ function renderOrderList(preserveChecks) {
         });
     }
 
-    displayedOrders = displayOrders(colormeOrders, currentSortOrder, currentBankMatches, currentDenpyoNoMap, currentShowDeliveryTime);
+    // チェック済みインデックスのSetを生成（配送希望はチェック済みのみ表示）
+    const checkedSet = checkedMap
+        ? new Set([...checkedMap.entries()].filter(([_, v]) => v).map(([k]) => k))
+        : null;
+
+    displayedOrders = displayOrders(colormeOrders, currentSortOrder, currentBankMatches, currentDenpyoNoMap, currentShowDeliveryTime, checkedSet);
 
     // チェック状態の復元
     if (checkedMap) {
