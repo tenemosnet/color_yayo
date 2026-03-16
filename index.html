@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>受注→弥生販売 統合変換ツール ver 6.0</title>
+    <title>受注→弥生販売 統合変換ツール ver 6.1</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div class="container">
         <div class="main-header">
-            <h1>📊 受注→弥生販売 統合変換ツール <span class="version">ver 6.0</span></h1>
+            <h1>📊 受注→弥生販売 統合変換ツール <span class="version">ver 6.1</span></h1>
         </div>
 
         <!-- 共通マスタ読込セクション -->
@@ -249,6 +249,42 @@
                         <button id="clearVisionApiKeyBtn" class="wholesale-btn secondary" style="padding: 8px 12px;">削除</button>
                     </div>
                     <div id="visionApiKeyStatus" style="margin-top: 8px; font-size: 12px; color: #666;"></div>
+                </div>
+            </div>
+
+            <!-- 販売店エントリー登録（折り畳み式） -->
+            <div class="ocr-section collapsed" id="entryFormSection">
+                <div class="ocr-section-header" id="entryFormSectionHeader" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h3 style="margin: 0;">📝 販売店エントリー登録</h3>
+                        <span id="entryFormSectionSummary" style="font-size: 12px; color: #666;"></span>
+                    </div>
+                    <span class="ocr-toggle-icon" style="transition: transform 0.2s;">▼</span>
+                </div>
+                <div class="ocr-section-body" id="entryFormSectionBody" style="display: none; margin-top: 15px;">
+                    <p style="color: #666; margin-bottom: 10px; font-size: 12px;">
+                        formrunエントリーフォームのメール（.eml）から弥生の得意先台帳データを生成します。
+                    </p>
+                    <div class="file-upload-box" id="entryFormUploadBox" style="border-color: #43a047; min-height: 80px;">
+                        <div class="upload-icon">📧</div>
+                        <h3 style="color: #43a047;">エントリーフォームEML</h3>
+                        <p>ドラッグ&ドロップ または クリックして選択</p>
+                        <input type="file" id="entryFormEmlInput" accept=".eml" style="display: none;">
+                        <label for="entryFormEmlInput" class="wholesale-btn" style="display: inline-block; margin-top: 10px;">
+                            📂 ファイルを選択
+                        </label>
+                    </div>
+                    <div id="entryFormPreview" style="display: none; margin-top: 15px;"></div>
+                    <div id="entryFormActions" style="display: none; margin-top: 15px;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="entryFormCustomerCode" placeholder="得意先コード（例: 000150）"
+                                   style="width: 180px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                            <button id="entryFormExportBtn" class="wholesale-btn" style="padding: 8px 20px; background: linear-gradient(135deg, #43a047 0%, #66bb6a 100%); color: white;">
+                                📥 得意先TXTダウンロード
+                            </button>
+                            <button id="entryFormClearBtn" class="wholesale-btn secondary" style="padding: 8px 12px;">クリア</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

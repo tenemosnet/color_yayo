@@ -24,6 +24,7 @@ import { VENDORS } from './registry.js';
 import { readPdfFile, parseOrderTable } from './parsers/pdf-parser.js';
 import { readFaxPdfFile, parsePastedOrderText } from './parsers/fax-parser.js';
 import { saveVisionApiKey, getVisionApiKey, hasVisionApiKey, clearVisionApiKey } from './common/vision-api.js';
+import { parseFormrunEntry, isFormrunEntry, generateCustomerTXT } from './parsers/formrun-parser.js';
 
 // グローバル状態
 let currentProducts = [];
@@ -31,6 +32,7 @@ let emailDate = null;
 let detectedCustomer = null;  // 検出された顧客情報
 let currentEmlFileName = '';  // 現在処理中のEMLファイル名
 let currentEmailBody = '';    // 現在処理中のメール本文（参照用）
+let currentEntryCustomer = null; // エントリーフォーム解析結果
 
 // 確認済み注文リスト
 let confirmedOrders = [];
@@ -159,6 +161,9 @@ function setupEventListeners() {
 
     // Vision APIキー設定
     initVisionApiKeyUI();
+
+    // 販売店エントリー登録
+    initEntryFormUI();
 }
 
 /**
@@ -1680,5 +1685,178 @@ async function handleEmlWithPdfAttachment(emlFile, emlData, pdfAttachment) {
         showStatus(`❌ PDF添付解析エラー: ${error.message}`, 'error');
         console.error('PDF添付処理エラー:', error);
     }
+}
+
+// ========================================
+// 販売店エントリー登録
+// ========================================
+
+/**
+ * エントリーフォームUIの初期化
+ */
+function initEntryFormUI() {
+    const header = document.getElementById('entryFormSectionHeader');
+    const section = document.getElementById('entryFormSection');
+    const body = document.getElementById('entryFormSectionBody');
+
+    // アコーディオン開閉
+    if (header && section && body) {
+        header.addEventListener('click', () => {
+            const isCollapsed = section.classList.toggle('collapsed');
+            body.style.display = isCollapsed ? 'none' : 'block';
+            const icon = header.querySelector('.ocr-toggle-icon');
+            if (icon) icon.style.transform = isCollapsed ? '' : 'rotate(180deg)';
+        });
+    }
+
+    // ファイルアップロード
+    const uploadBox = document.getElementById('entryFormUploadBox');
+    const fileInput = document.getElementById('entryFormEmlInput');
+
+    if (uploadBox && fileInput) {
+        uploadBox.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'LABEL') {
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleEntryFormFile(file);
+            e.target.value = '';
+        });
+
+        uploadBox.addEventListener('dragenter', handleDragEnter);
+        uploadBox.addEventListener('dragover', handleDragOver);
+        uploadBox.addEventListener('dragleave', handleDragLeave);
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                handleEntryFormFile(files[0]);
+            }
+        });
+    }
+
+    // エクスポート・クリアボタン
+    document.getElementById('entryFormExportBtn')?.addEventListener('click', handleEntryFormExport);
+    document.getElementById('entryFormClearBtn')?.addEventListener('click', handleEntryFormClear);
+}
+
+/**
+ * エントリーフォームEMLファイルを処理
+ */
+async function handleEntryFormFile(file) {
+    if (!file.name.toLowerCase().endsWith('.eml')) {
+        showStatus('EMLファイル（.eml）を選択してください', 'error');
+        return;
+    }
+
+    try {
+        const emlData = await readEmlFile(file);
+
+        if (!isFormrunEntry(emlData.body, emlData.subject)) {
+            showStatus('⚠️ エントリーフォームのメールではないようです', 'error');
+            return;
+        }
+
+        currentEntryCustomer = parseFormrunEntry(emlData.body);
+        console.log('エントリーフォーム解析結果:', currentEntryCustomer);
+
+        renderEntryFormPreview(currentEntryCustomer);
+
+        const summary = document.getElementById('entryFormSectionSummary');
+        if (summary) summary.textContent = `✅ ${currentEntryCustomer.companyName}`;
+
+        showStatus(`✅ エントリーフォーム解析完了: ${currentEntryCustomer.companyName}`, 'success');
+    } catch (error) {
+        showStatus(`❌ 解析エラー: ${error.message}`, 'error');
+        console.error('エントリーフォーム解析エラー:', error);
+    }
+}
+
+/**
+ * 解析結果のプレビュー表示
+ */
+function renderEntryFormPreview(customer) {
+    const preview = document.getElementById('entryFormPreview');
+    if (!preview) return;
+
+    const rows = [
+        ['法名・会社名', customer.companyName],
+        ['フリガナ', customer.furigana],
+        ['代表者名', customer.representative],
+        ['購買担当者', customer.buyer || '（代表者と同じ）'],
+        ['郵便番号', customer.zip],
+        ['住所', `${customer.prefecture}${customer.city}${customer.address}`],
+        ['建物名', customer.building || '−'],
+        ['メールアドレス', customer.email],
+        ['会社代表番号', customer.phone],
+        ['担当者電話', customer.buyerPhone || '−'],
+        ['取扱予定商品', customer.products || '−'],
+    ];
+
+    let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+    rows.forEach(([label, value]) => {
+        html += `<tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 6px 10px; color: #666; width: 130px; font-weight: bold;">${label}</td>
+            <td style="padding: 6px 10px;">${value}</td>
+        </tr>`;
+    });
+    html += '</table>';
+
+    preview.innerHTML = html;
+    preview.style.display = 'block';
+
+    const actions = document.getElementById('entryFormActions');
+    if (actions) actions.style.display = 'block';
+}
+
+/**
+ * 得意先TXTダウンロード
+ */
+function handleEntryFormExport() {
+    if (!currentEntryCustomer) {
+        showStatus('⚠️ 先にEMLファイルを読み込んでください', 'error');
+        return;
+    }
+
+    const code = document.getElementById('entryFormCustomerCode')?.value.trim();
+    if (!code) {
+        showStatus('⚠️ 得意先コードを入力してください', 'error');
+        return;
+    }
+
+    try {
+        const txtContent = generateCustomerTXT(currentEntryCustomer, code);
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const filename = `ya_n_cstmers_ws_${dateStr}.txt`;
+        downloadAsShiftJIS(txtContent, filename);
+        showStatus(`✅ 得意先TXTを出力しました: ${currentEntryCustomer.companyName}（${code}）`, 'success');
+    } catch (error) {
+        showStatus(`❌ 出力エラー: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * エントリーフォームのクリア
+ */
+function handleEntryFormClear() {
+    currentEntryCustomer = null;
+
+    const preview = document.getElementById('entryFormPreview');
+    if (preview) { preview.innerHTML = ''; preview.style.display = 'none'; }
+
+    const actions = document.getElementById('entryFormActions');
+    if (actions) actions.style.display = 'none';
+
+    const codeInput = document.getElementById('entryFormCustomerCode');
+    if (codeInput) codeInput.value = '';
+
+    const summary = document.getElementById('entryFormSectionSummary');
+    if (summary) summary.textContent = '';
 }
 

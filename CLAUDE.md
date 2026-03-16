@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-カラーミーショップの受注データと卸売注文を弥生販売の売上伝票形式に変換するWebアプリケーション。ブラウザベースのES6 Modulesアプリケーション（v6.0）。ビルド不要。
+カラーミーショップの受注データと卸売注文を弥生販売の売上伝票形式に変換するWebアプリケーション。ブラウザベースのES6 Modulesアプリケーション（v6.1）。ビルド不要。
 
 ## コマンド
 
@@ -17,12 +17,35 @@ npx vitest run test/converter.test.js  # 単一テスト実行
 
 **重要**: ローカルサーバー経由で実行必須。`file://`プロトコルではES6 ModulesのCORS制限により動作しない。
 
+## デプロイ
+
+GitHub Pagesは `master` ブランチから配信。開発は `v4.0-dev` ブランチで行う。
+
+```bash
+# 開発 → 本番反映の流れ
+git push origin v4.0-dev
+git checkout master && git merge v4.0-dev && git push origin master
+git checkout v4.0-dev
+```
+
+## バージョンアップ時の更新箇所
+
+バージョン番号は以下の全箇所を更新すること:
+
+| ファイル | 場所 |
+|----------|------|
+| `index.html` | L6 `<title>` タグ |
+| `index.html` | L12 `<span class="version">` |
+| `README.md` | 1行目のタイトル |
+| `README.md` | `## バージョン履歴` に新エントリ追加 |
+| `CLAUDE.md` | プロジェクト概要の `（vX.X）` |
+
 ## アーキテクチャ
 
 ### エントリーポイント
 
 - **index.html** - 統合UI（小売/卸売タブ切替）、共通マスタ読込エリア（アコーディオン式）
-- **css/styles.css** - 全スタイル一元管理（小売・卸売・共通マスタ・タブ等）
+- **css/styles.css** - 全スタイル一元管理
 
 ### モジュール構成
 
@@ -35,10 +58,12 @@ js/
 │   └── product-master.js      # 共通商品マスタ（LocalStorage: productMaster）、単価区分別価格・軽減税率対応
 ├── retail/                    # カラーミー → 弥生小売変換
 │   ├── main.js                # イベント処理、共通マスタ自動読込・双方向同期
-│   ├── parser.js              # Shift-JIS CSV・Excelパース
+│   ├── parser.js              # Shift-JIS CSV・Excelパース（配送希望日・配送希望時間も取得）
 │   ├── matcher.js             # 顧客マッチング: メール → 電話 → 氏名+住所確認の優先順（同姓同名別人判定）
 │   ├── converter.js           # 弥生59フィールドTSV生成 + Shift-JISダウンロード
-│   └── ui.js                  # UI状態管理
+│   ├── ui.js                  # UI状態管理（受注リスト表示、配送希望・伝票Noトグル）
+│   ├── bank-parser.js         # ゆうちょダイレクト入出金明細CSVパース
+│   └── bank-matcher.js        # 入金照合ロジック（名前・金額マッチング、Pass 1〜4段階）
 └── wholesale/                 # 卸売注文処理（レジストリベースアーキテクチャ）
     ├── registry.js            # 取引先定義の一元管理（VENDORS）+ 納入コード決定ロジック
     ├── main.js                # オーケストレーター: ファイルアップロード、商品編集、一括変換
@@ -54,7 +79,7 @@ js/
 
 ### 卸売レジストリパターン
 
-取引先ごとの設定は `js/wholesale/registry.js` の `VENDORS` オブジェクトで一元管理。各エントリに得意先コード、検出方法（`eml`/`pdf-text`/`fax`）、ドメイン情報を定義。
+取引先ごとの設定は `js/wholesale/registry.js` の `VENDORS` オブジェクトで一元管理。各エントリに得意先コード、納入コード、検出方法（`eml`/`pdf-text`/`fax`）、ドメイン情報を定義。
 
 **卸売取引先の追加手順**:
 1. `js/wholesale/registry.js` の `VENDORS` にエントリ追加
@@ -68,6 +93,8 @@ js/
 - 取引区分2（現金）: '003'（ゆうちょ振込済）
 - 取引区分3（サンプル）・その他: ''（空白）
 - 取引区分4（都度請求）: '002'（先行出荷）
+
+**VENDORS個別の納入コード**: レジストリの `nounyuCode` が直接使用される場合もある（`getNounyuCodeByCustomer()`は顧客マスタの取引区分ベース）
 
 ### データフロー
 
@@ -88,7 +115,16 @@ js/
 - **軽減税率**: 商品マスタの分類１="07"（食料品）→ 8%（×1.08）、それ以外 → 10%（×1.10）。弥生TSV課税区分: 軽減=30、標準=13
 - **商品名マッチング**: コードなしメール注文は`searchProductsByText()`で商品マスタをキーワード検索し自動マッチ。3段階ソート: キーワード一致率 → バイグラム類似度 → 商品名長さ昇順（単品優先）
 - **ロット数量解決**: `unit==="ロット"`の場合、商品マスタの入数(`lotSize`)で実数量に変換。入数未設定時はエラー表示
+- **ネコポス判定**（`parser.js`）: 送料385円、または送料0円+商品コード1382（アリビダ）のみ → `order.isNekopos = true`
 - **出力形式**: 59フィールド、タブ区切り、Shift-JIS、CRLF。フィールド20='334401'、フィールド40='テネモスショップ'
+
+### UIトグル機能（受注リスト）
+
+`ui.js` の `displayOrders()` は以下のトグルボタンで列の表示/非表示を切り替え:
+- **予定伝票No** (`denpyoNoMap`): チェック済み注文に対して伝票番号をプレビュー表示
+- **配送希望** (`showDeliveryTime`): カラーミーCSVの配送希望日・配送希望時間を表示（B2入力用）
+
+トグル状態は `main.js` のグローバル変数で管理し、`renderOrderList(true)` で再描画。
 
 ### ファイルエンコーディング
 
