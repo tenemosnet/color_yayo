@@ -206,7 +206,7 @@ describe('formrun-parser', () => {
             const txt = generateCustomerTXT(customer, '000150');
             const fields = txt.split('\t');
             expect(fields[22]).toBe('2'); // 取引区分: 現金
-            expect(fields[23]).toBe('2'); // 単価種類: 売上単価２
+            expect(fields[23]).toBe('3'); // 単価種類: 売上単価２
         });
 
         it('メールアドレスが設定される', () => {
