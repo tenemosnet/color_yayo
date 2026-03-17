@@ -170,6 +170,13 @@ describe('formrun-parser', () => {
             expect(fields[0]).toBe('000150');
         });
 
+        it('得意先コードが6桁にゼロ埋めされる', () => {
+            const customer = parseFormrunEntry(sampleBody);
+            const txt = generateCustomerTXT(customer, '7123');
+            const fields = txt.split('\t');
+            expect(fields[0]).toBe('007123');
+        });
+
         it('名称と略称が会社名と一致する', () => {
             const customer = parseFormrunEntry(sampleBody);
             const txt = generateCustomerTXT(customer, '000150');

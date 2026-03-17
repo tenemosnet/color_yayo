@@ -177,7 +177,7 @@ export function generateCustomerTXT(customer, code) {
     const memo1 = customer.buyer ? `購買担当: ${customer.buyer}` : '';
 
     const row = [
-        code,                                            // 0: コード
+        String(code).padStart(6, '0'),                     // 0: コード（6桁ゼロ埋め）
         customer.companyName,                            // 1: 名称
         toHalfWidthKatakana(customer.furigana),          // 2: フリガナ（半角カタカナ）
         customer.companyName,                            // 3: 略称
