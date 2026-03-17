@@ -358,7 +358,8 @@ export function calculateCODFee(paymentTotal) {
 
 ## 👤 開発者
 
-- **Claude (Anthropic)** - AI Assistant
+- **Tenemos Net** - 企画・開発・運用
+- AI開発支援: Claude (Anthropic)
 - **プロジェクト開始**: 2024年11月
 
 ## 🙏 謝辞
