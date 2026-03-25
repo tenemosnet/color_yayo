@@ -364,13 +364,15 @@ async function handleEmlFile(file) {
 
         // 商品マスタから単価を自動設定（顧客の単価種類に応じて）
         const priceType = detectedCustomer ? detectedCustomer.priceType : 2;
-        currentProducts = applyPricesFromMaster(currentProducts, priceType);
+        // レジストリ未登録の場合、指定単価が0なら他の単価列へフォールバック
+        const useFallback = isCustomerUnregistered();
+        currentProducts = applyPricesFromMaster(currentProducts, priceType, { fallback: useFallback });
 
         // 送料行を追加（顧客の都道府県から）- 卸販売は常に送料計上
         if (detectedCustomer && detectedCustomer.prefecture) {
             const shippingCode = shippingCodes[detectedCustomer.prefecture];
             if (shippingCode) {
-                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType);
+                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType, { fallback: useFallback });
                 const shippingPrice = toTaxIncluded(shippingPriceExcludingTax);
                 const shippingName = getProductName(shippingCode) || '送料';
                 currentProducts.push({
@@ -519,13 +521,14 @@ async function handlePdfFile(file) {
 
         // 商品マスタから単価・商品名を自動設定（顧客の単価種類に応じて）
         const priceType = detectedCustomer ? detectedCustomer.priceType : 2;
-        currentProducts = applyPricesFromMaster(currentProducts, priceType);
+        const useFallback = isCustomerUnregistered();
+        currentProducts = applyPricesFromMaster(currentProducts, priceType, { fallback: useFallback });
 
         // 送料行を追加（顧客の都道府県から）- 卸販売は常に送料計上
         if (detectedCustomer && detectedCustomer.prefecture) {
             const shippingCode = shippingCodes[detectedCustomer.prefecture];
             if (shippingCode) {
-                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType);
+                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType, { fallback: useFallback });
                 const shippingPrice = toTaxIncluded(shippingPriceExcludingTax);
                 const shippingName = getProductName(shippingCode) || '送料';
                 currentProducts.push({
@@ -568,6 +571,16 @@ async function handlePdfFile(file) {
         showStatus(`❌ PDFエラー: ${error.message}`, 'error');
         console.error('PDF処理エラー:', error);
     }
+}
+
+/**
+ * 検出済み顧客がレジストリ未登録かどうか判定
+ * @returns {boolean} 未登録の場合true
+ */
+function isCustomerUnregistered() {
+    if (!detectedCustomer) return false;
+    const registeredCodes = Object.values(VENDORS).map(v => v.code);
+    return !registeredCodes.includes(detectedCustomer.code);
 }
 
 /**
@@ -749,13 +762,14 @@ function showFaxPasteUI(pdfData) {
 
         // 商品マスタから単価・商品名を自動設定
         const priceType = detectedCustomer ? detectedCustomer.priceType : 2;
-        currentProducts = applyPricesFromMaster(currentProducts, priceType);
+        const useFallback = isCustomerUnregistered();
+        currentProducts = applyPricesFromMaster(currentProducts, priceType, { fallback: useFallback });
 
         // 送料行を追加
         if (detectedCustomer && detectedCustomer.prefecture) {
             const shippingCode = shippingCodes[detectedCustomer.prefecture];
             if (shippingCode) {
-                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType);
+                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType, { fallback: useFallback });
                 const shippingPrice = toTaxIncluded(shippingPriceExcludingTax);
                 const shippingName = getProductName(shippingCode) || '送料';
                 currentProducts.push({
@@ -1037,8 +1051,10 @@ function handleConfirmOrder() {
     // 単価入力チェック（送料行は除外）
     const missingPrices = currentProducts.filter(p => !p.isShipping && (!p.unitPrice || p.unitPrice <= 0));
     if (missingPrices.length > 0) {
-        showStatus('⚠️ すべての商品に単価を入力してください', 'error');
-        return;
+        const names = missingPrices.map(p => `・${p.code || '(コードなし)'} ${p.name}`).join('\n');
+        if (!confirm(`以下の商品の単価が未入力です。このまま追加しますか？\n\n${names}\n\n※ 弥生インポート前に単価の確認が必要です`)) {
+            return;
+        }
     }
 
     // 設定を取得
@@ -1432,16 +1448,18 @@ function toTaxIncluded(price, isReducedTax = false) {
  * 商品データに単価と商品名を自動設定
  * @param {Array<Object>} products
  * @param {number} priceType - 単価種類（1, 2, or 3）
+ * @param {Object} [options]
+ * @param {boolean} [options.fallback=false] - 指定単価が0の場合に他の単価列へフォールバック
  * @returns {Array<Object>} 単価・商品名設定済みの商品データ
  */
-function applyPricesFromMaster(products, priceType = 2) {
+function applyPricesFromMaster(products, priceType = 2, { fallback = false } = {}) {
     const master = loadProductMaster();
     if (!master) {
         console.warn('商品マスタが読み込まれていません');
         return products;
     }
 
-    console.log('商品マスタから単価・商品名を適用中... マスタ件数:', master.size, '単価種類:', priceType);
+    console.log('商品マスタから単価・商品名を適用中... マスタ件数:', master.size, '単価種類:', priceType, 'フォールバック:', fallback);
 
     let priceFoundCount = 0;
     let nameFoundCount = 0;
@@ -1470,7 +1488,7 @@ function applyPricesFromMaster(products, priceType = 2) {
         const isReducedTax = (category1 === REDUCED_TAX_CATEGORY1);
 
         // 商品マスタから単価を取得（税別）→ 税込に変換
-        const priceExcludingTax = getWholesalePrice(code, priceType);
+        const priceExcludingTax = getWholesalePrice(code, priceType, { fallback });
         if (priceExcludingTax > 0) {
             const priceIncludingTax = toTaxIncluded(priceExcludingTax, isReducedTax);
             product.unitPrice = priceIncludingTax;
@@ -1635,13 +1653,14 @@ async function handleEmlWithPdfAttachment(emlFile, emlData, pdfAttachment) {
 
         // 商品マスタから単価・商品名を自動設定（顧客の単価種類に応じて）
         const priceType = detectedCustomer ? detectedCustomer.priceType : 2;
-        currentProducts = applyPricesFromMaster(currentProducts, priceType);
+        const useFallback = isCustomerUnregistered();
+        currentProducts = applyPricesFromMaster(currentProducts, priceType, { fallback: useFallback });
 
         // 送料行を追加（顧客の都道府県から）
         if (detectedCustomer && detectedCustomer.prefecture) {
             const shippingCode = shippingCodes[detectedCustomer.prefecture];
             if (shippingCode) {
-                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType);
+                const shippingPriceExcludingTax = getWholesalePrice(shippingCode, priceType, { fallback: useFallback });
                 const shippingPrice = toTaxIncluded(shippingPriceExcludingTax);
                 const shippingName = getProductName(shippingCode) || '送料';
                 currentProducts.push({

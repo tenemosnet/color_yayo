@@ -203,19 +203,32 @@ export function getProductMasterInfo() {
  * @param {number} priceType - 単価種類（1, 2, or 3）デフォルトは2
  * @returns {number} 単価（見つからない場合は0）
  */
-export function getWholesalePrice(code, priceType = 2) {
+export function getWholesalePrice(code, priceType = 2, { fallback = false } = {}) {
     const master = loadProductMaster();
     if (!master) return 0;
 
     const product = master.get(code);
     if (!product) return 0;
 
+    // 指定された単価種類で取得
+    let price = 0;
     switch (priceType) {
-        case 1: return product.price1 || 0;
-        case 2: return product.price2 || 0;
-        case 3: return product.price3 || 0;
-        default: return product.price2 || 0;
+        case 1: price = product.price1 || 0; break;
+        case 2: price = product.price2 || 0; break;
+        case 3: price = product.price3 || 0; break;
+        default: price = product.price2 || 0; break;
     }
+
+    // フォールバック: 指定単価が0の場合、他の単価列から取得（price1 → price2 → price3）
+    if (price === 0 && fallback) {
+        price = product.price1 || product.price2 || product.price3 || 0;
+        if (price > 0) {
+            const usedType = product.price1 ? 1 : product.price2 ? 2 : 3;
+            console.log(`単価フォールバック: ${code} 売上単価${priceType}=0 → 売上単価${usedType}=${price}`);
+        }
+    }
+
+    return price;
 }
 
 /**
