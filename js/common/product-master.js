@@ -337,8 +337,12 @@ export function searchProductsByText(searchText) {
 
         // 方向2: 商品名が検索テキストに含まれるか（逆方向マッチ）
         // 例: 検索「ポケットピッコロお願いします」に商品名「ポケットピッコロ」が含まれる
-        if (score === 0 && normalizedName.length >= 3 && normalizedSearch.includes(normalizedName)) {
-            score = 150;  // 完全包含は一致率100%より高スコア
+        if (normalizedName.length >= 3 && normalizedSearch.includes(normalizedName)) {
+            if (score > 0) {
+                score = 200;  // 双方向マッチ（キーワード＋逆引き）→ 最高優先度
+            } else {
+                score = 150;  // 逆引きのみ
+            }
         }
 
         if (score > 0) {

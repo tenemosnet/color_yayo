@@ -1,0 +1,63 @@
+X-Account-Key: account3
+X-UIDL: UID75685-1569043688
+X-Mozilla-Status: 0003
+X-Mozilla-Status2: 00000000
+X-Mozilla-Keys:                                                                                 
+Return-Path: <iroha@yamazen.info>
+Delivered-To: order@tenemos.jp
+X-Virus-Status: scanned (With Secure/Atlant/virusgw12106.xserver.jp/)
+Received: from sv16397.xserver.jp (sv16397.xserver.jp [85.131.207.138])
+	by sv8542.xserver.jp (Postfix) with ESMTPS id 0D2E33008D6A34
+	for <order@tenemos.jp>; Mon, 23 Mar 2026 12:49:50 +0900 (JST)
+Authentication-Results: sv8542.xserver.jp;
+	dkim=pass header.d=yamazen.info header.s=default header.b=jRvoNc+y;
+	spf=pass (sv8542.xserver.jp: domain of iroha@yamazen.info designates 85.131.207.138 as permitted sender) smtp.mailfrom=iroha@yamazen.info;
+	dmarc=none
+X-Virus-Status: scanned (With Secure/Atlant/virusgw16020.xserver.jp/)
+Received: from [192.168.0.192] (p3366240-ipxg00d01tokaisakaetozai.aichi.ocn.ne.jp [60.44.79.240])
+	by sv16397.xserver.jp (Postfix) with ESMTPSA id 96DF53FA83546;
+	Mon, 23 Mar 2026 12:49:49 +0900 (JST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yamazen.info;
+	s=default; t=1774237789;
+	bh=cwSdxeo1Cxdy4fVEmLXYXO9OCdueBxF6bBfXSlElXQg=;
+	h=Date:From:Subject:Reply-To:To:From;
+	b=jRvoNc+yddLkq9SQoZANliTS5xYbIJtDumSh98OmjRcSgD1TBSjEa6ufs23uTyC+V
+	 0oNUYrzqHL7ttrkXR/55R55folR7cQbVjGr/mh3YidpfXtPq41LcyMnZOfnVZJeqZ4
+	 KiMxRBoWYZgMBWOQAlqJ9aM8+js9bUTLQBstRof3O/egf37NVR6SoKli/Ves2EF4fF
+	 brb4tSwqjUWznzUCssdcbW5rIKFXUYZHoKzkyK/9XQQuico+ZJgra4NpMcjW5udTQi
+	 K1r01Nq0goxYh7jd2Y4MpsNW66p7cIyYVj/sDlIJYcuYVELAgupGU0oTqfFZfXjL1M
+	 9ztFE71UOfteg==
+Message-ID: <767f03b9-d044-4f53-906f-8c7b9909cf0f@yamazen.info>
+Date: Mon, 23 Mar 2026 12:49:51 +0900
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+From: =?UTF-8?B?5LyK6Lev5rOi44GE44Gh44Gw?= <iroha@yamazen.info>
+Subject: =?UTF-8?B?My8yM+S7mOazqOaWhw==?=
+Reply-To: iroha@yamazen.info
+To: =?UTF-8?B?44OG44ON44Oi44K544ON44OD44OI5Y246LKp5aOy6YOo?=
+ <order@tenemos.jp>
+Content-Language: en-US
+Organization: =?UTF-8?B?5qCq5byP5Lya56S+5bGx5ZaEIOeSsOWig+S6i+alremDqA==?=
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+XSRV-Filter: order@tenemos.jp
+
+いつも、お世話になっております。
+
+以下の注文、御願いいたします。
+
+ビダドロップ　１２本
+ノーマルレフィル　１２個
+フリーエネルギー小冊子　２０冊
+
+＊ビダせっけんの製造予定はいつ頃になりますか？
+
+
+
+伊路波いちば　https://iroha.yamazen.info
+tel : (052)526-5931（平日営業　9:00～17:00）
+fax : (052)526-5111
+mail : iroha@yamazen.info
+株式会社 山善　環境事業部
+〒450-0003 名古屋市中村区名駅南1-10-9 山善ビル2F
+

@@ -196,6 +196,41 @@ describe('matchDepositsToOrders', () => {
         expect(result.unmatchedDeposits.length).toBe(1);
     });
 
+    it('重複文字の誤カウントで無関係な名前にペアリングしない', () => {
+        // ﾅｶﾆｼﾋﾛｼﾋﾛﾔ vs ﾅｶｽｼﾞﾕｳｺ: ユニーク共通文字は{ﾅ,ｶ,ｼ}=3文字のみ
+        // ｼが振込名に2回出現するが、1回のみカウントすべき
+        const orders = [
+            {
+                customerName: '中筋裕子',
+                furigana: 'ナカスジ ユウコ',
+                orderDate: '2026/03/08',
+                paymentMethod: '銀行振込',
+                paymentFee: 0,
+                shippingFee: 0,
+                discountAmount: 0,
+                items: [{ subtotal: 9900 }]
+            },
+            {
+                customerName: '中西　彌八(洋)',
+                furigana: 'ナカニシ ヒロヤ ヒロシ',
+                orderDate: '2026/03/09',
+                paymentMethod: '銀行振込',
+                paymentFee: 0,
+                shippingFee: 0,
+                discountAmount: 0,
+                items: [{ subtotal: 9900 }]
+            }
+        ];
+        const deposits = [
+            { date: '2026-03-19', amount: 9900, type: '振込', name: 'ﾅｶﾆｼ ﾋﾛｼ ﾋﾛﾔ' }
+        ];
+        const result = matchDepositsToOrders(deposits, orders);
+
+        // 中筋裕子にはペアリングされず、中西（フリガナ語順違い）にcandidateとしてマッチ
+        expect(result.matches.has(0)).toBe(false);
+        expect(result.matches.get(1).status).toBe('candidate');
+    });
+
     it('名前に部分的な共通文字がある場合はcandidateになる', () => {
         const orders = [
             {

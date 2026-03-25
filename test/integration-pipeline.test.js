@@ -34,7 +34,10 @@ const MOCK_PRODUCTS = {
     '1393': { code: '1393', name: 'お米と大豆の酵素水650mlパック', category1: '', price1: 1380, price2: 0, price3: 0, lotSize: 0 },
     '1510': { code: '1510', name: 'マナウォーター青 大', category1: '', price1: 15000, price2: 0, price3: 0, lotSize: 0 },
     '1711': { code: '1711', name: 'ボリビア岩塩20kg', category1: '07', price1: 5000, price2: 0, price3: 0, lotSize: 0 },
-    '1800': { code: '1800', name: 'フリーエネルギー', category1: '', price1: 1500, price2: 0, price3: 0, lotSize: 0 }
+    '1800': { code: '1800', name: 'フリーエネルギー', category1: '', price1: 1500, price2: 0, price3: 0, lotSize: 0 },
+    '1801': { code: '1801', name: 'フリーエネルギー小冊子', category1: '', price1: 300, price2: 0, price3: 0, lotSize: 0 },
+    '1100': { code: '1100', name: 'ビダドロップ', category1: '', price1: 2750, price2: 0, price3: 0, lotSize: 0 },
+    '1110': { code: '1110', name: 'ノーマルレフィル', category1: '', price1: 990, price2: 0, price3: 0, lotSize: 0 }
 };
 
 // localStorage モック
@@ -187,5 +190,49 @@ describe('PONOMAIL パイプライン', () => {
     it('Step2: 引用部分の古い注文（1510）は抽出されない', () => {
         const oldOrder = products.find(p => p.code === '1510');
         expect(oldOrder).toBeUndefined();
+    });
+});
+
+// ============================================================
+// 山善: text/plain + 8bit、コードなし注文
+// ============================================================
+describe('山善（コードなし） パイプライン', () => {
+    let parsed, products;
+
+    beforeEach(() => {
+        const eml = readEmlFixture('yamazen-nocode.eml');
+        parsed = parseEmlFile(eml);
+        products = extractProductData(parsed.body);
+    });
+
+    it('Step1: EML解析 — 平文メールの本文とドメインを抽出', () => {
+        expect(parsed.fromDomain).toBe('yamazen.info');
+        expect(parsed.body).toContain('ビダドロップ');
+        expect(parsed.body).toContain('ノーマルレフィル');
+        expect(parsed.body).toContain('フリーエネルギー小冊子');
+    });
+
+    it('Step2: 商品抽出 — コードなし3商品を抽出', () => {
+        expect(products).toHaveLength(3);
+        expect(products[0]).toMatchObject({ quantity: 12, unit: '本' });
+        expect(products[1]).toMatchObject({ quantity: 12, unit: '個' });
+        expect(products[2]).toMatchObject({ quantity: 20, unit: '冊' });
+    });
+
+    it('Step3: スコアリング — ビダドロップが正しくマッチ', () => {
+        expect(products[0].code).toBe('1100');
+    });
+
+    it('Step3: スコアリング — ノーマルレフィルが正しくマッチ', () => {
+        expect(products[1].code).toBe('1110');
+    });
+
+    it('Step3: スコアリング — フリーエネルギー小冊子が1801(小冊子)にマッチ', () => {
+        expect(products[2].code).toBe('1801');
+    });
+
+    it('Step2: 署名ブロックの電話番号等は注文行として抽出されない', () => {
+        // tel/fax行、メールアドレス行等が誤抽出されないこと
+        expect(products).toHaveLength(3);
     });
 });

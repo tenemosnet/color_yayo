@@ -348,16 +348,18 @@ export function matchDepositsToOrders(deposits, orders) {
 }
 
 /**
- * 2つの名前に共通する文字が4文字以上あるか判定（ノンペア判定用）
+ * 2つの名前にユニーク共通文字が4文字以上あるか判定（ノンペア判定用）
+ * 重複文字は1回のみカウント（例: ｼが2回出現しても1文字扱い）
  * @param {string} a - 正規化済み名前
  * @param {string} b - 正規化済み名前
- * @returns {boolean} 共通文字が4文字以上あればtrue
+ * @returns {boolean} ユニーク共通文字が4文字以上あればtrue
  */
 function hasNameOverlap(a, b) {
     if (!a || !b) return false;
+    const setA = new Set(a);
     const setB = new Set(b);
     let count = 0;
-    for (const ch of a) {
+    for (const ch of setA) {
         if (setB.has(ch)) count++;
     }
     return count >= 4;
