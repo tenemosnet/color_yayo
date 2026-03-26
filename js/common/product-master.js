@@ -300,6 +300,7 @@ function normalizeForSearch(text) {
         .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
         .replace(/[ℓＬｌ]/g, 'リットル')
         .replace(/(\d)\s*[Ll]\b/g, '$1リットル')
+        .replace(/（/g, '(').replace(/）/g, ')')  // 全角括弧→半角に統一
         .replace(/[　\s]+/g, '')
         .toLowerCase();
 }
@@ -377,6 +378,13 @@ export function searchProductsByText(searchText) {
 
     // スコア降順 → バイグラム類似度降順 → 商品名が短い方を優先
     results.sort((a, b) => b.score - a.score || b.bigramScore - a.bigramScore || a.name.length - b.name.length);
+
+    // デバッグ: 検索テキストとキーワード、正規化済みテキストを出力
+    if (results.length > 0) {
+        console.log(`[searchProductsByText] 検索: "${searchText}" → 正規化: "${normalizedSearch}" → キーワード:`, keywords);
+        console.log(`[searchProductsByText] 結果(上位5件):`, results.slice(0, 5).map(r => `${r.code}:${r.name}(score=${r.score},bigram=${r.bigramScore})`));
+    }
+
     return results;
 }
 
