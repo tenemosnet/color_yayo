@@ -1,0 +1,179 @@
+X-Account-Key: account3
+X-UIDL: UID75812-1569043688
+X-Mozilla-Status: 0002
+X-Mozilla-Status2: 00000000
+X-Mozilla-Keys:                                                                                 
+Return-Path: <smilecompany717@gmail.com>
+Delivered-To: order@tenemos.jp
+X-Virus-Status: scanned (With Secure/Atlant/virusgw12106.xserver.jp/)
+Received: from mail-ed1-f48.google.com (mail-ed1-f48.google.com [209.85.208.48])
+	by sv8542.xserver.jp (Postfix) with ESMTPS id 2DB22300831EAF
+	for <order@tenemos.jp>; Wed, 25 Mar 2026 09:13:13 +0900 (JST)
+Authentication-Results: sv8542.xserver.jp;
+	dkim=pass header.d=gmail.com header.s=20251104 header.b=mmm5xMIj;
+	spf=pass (sv8542.xserver.jp: domain of smilecompany717@gmail.com designates 209.85.208.48 as permitted sender) smtp.mailfrom=smilecompany717@gmail.com;
+	dmarc=pass (policy=none) header.from=gmail.com;
+	arc=pass ("google.com:s=arc-20240605:i=1")
+Received: by mail-ed1-f48.google.com with SMTP id 4fb4d7f45d1cf-6634bb959a2so2586879a12.1
+        for <order@tenemos.jp>; Tue, 24 Mar 2026 17:13:13 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1774397590; cv=none;
+        d=google.com; s=arc-20240605;
+        b=C9LzppeyGmBRhOXae3PWvTNgT4fYAr7akW9y9GKxj6TvFw1KmeZxqGwhwFYgxKd34O
+         NdLd1IVnxc4t21TCRphpaHY0aDbuobTsCBz23d7BgiJ5y6nWwKbIOZoDtiOa/q0p2bbv
+         JT9+AL/J0xomTVAGTT2W2HYXukRr4Eb82Yk2phYIOqJbMf/gFswcDWHD8WQslw8od03Z
+         UHN3Ls1hnWfyqrcdsbE8iV9sdYJAiJ4K1yNYUA7P7vrYh0QPuEg7zkvRvNNTxV7XIEZy
+         RWTIAn2zDjFtmyvFn1KeD07+2CNulW9PgpFMYntddquYLXRXNyaGzOq2AZiFMYQAZ69r
+         /Vqg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :dkim-signature;
+        bh=rOUU/dD0bjuegedljzhLgHSnGM+LLo6jc6Byk65ukc0=;
+        fh=DFC6gvmbuU04j8ouAazOA3bf2QSvWsUC0FejCw5qYG0=;
+        b=aRcwEaJfEuANDQrMIdBLkecyUQ7uuQzBJScBhs7lV51blbIaYleKFeWmCtXj3CIeMA
+         0TDOcZ+XUFCpAk3HcYFqAsETQOAHdG/nOYlVAWiPyjGwFRH5JcANSr4DIbehktu29CO8
+         p+2quE6dam2Cy9Ni5zpaV6eZq0RVGNREN+Hp6y/MLwgW2lyc467HFxRVPGK2YrY4CzAU
+         GHfxaLobHxJjmMGgsGYuNiS6ZkqsNHOSWhIKRppHygA98Wcyv2gifYslpjO80N25it1w
+         w87NfoGJjczZe4onVxElG4XJUODvkNA4TooL50zqodjJjRcZD0LOb3BmeVh2Tcs8V2KT
+         uWSw==;
+        darn=tenemos.jp
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1774397590; x=1775002390; darn=tenemos.jp;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=rOUU/dD0bjuegedljzhLgHSnGM+LLo6jc6Byk65ukc0=;
+        b=mmm5xMIja6bbbF9QJWnSQ1IUZ/gwokYIMkFXAmRIvOm6UV5nbAuVER4FFewYJLKHBu
+         ZxY9YwS/Biwu6cU/ecCE/YXQpDTvrtTRTd+WjUlSgFcidyAS2Zb1YEPqq2KMDThXydzH
+         KOIqBKrgl3kccsVzD4/hmTHQROAMC1wNM1FY/Oc3ZyavkFynkY1WZvtb6r1J4E5Qv8zU
+         vVMlQBDYs+rBCJT5YX2MogP7vFn/gT92cxIkTybuNxqRqDj1aHykFBkrdaBIqFtYmCxO
+         qh/zd/FrnD2F896ti87oWOz/2W6NtW6rMa01Pj2SXLkWwek+gf7ePXXkF49jGSPN7VjN
+         6fdg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1774397590; x=1775002390;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=rOUU/dD0bjuegedljzhLgHSnGM+LLo6jc6Byk65ukc0=;
+        b=izOacpACjPcJEmPNAdTUXtquIq6aIj4STVMFSdhSg2D+paZLn+bczqkULt4xWp7vWl
+         as/4Djg02moOJF6qL2UYScpBbS7NSYZVWNGLgtZxYBBl+aQh/pXrZ29MAk4SBfjCK+Nx
+         nCbI3RSPCjIGirNK9fMgcFFb579oYMk+AmaO2zzmm0wFhIcuCzfS4fSNava2FCC9QBgl
+         V9+dH8PQUkGwh8iSJFRlYfrTYqkcn0KMTOFyvBnN0vd2UBob7R4Z6f6oS9s8izQUNgsT
+         lJeH6iC/OKlYsep8YAKF1Wb0QVDqdUJRECnKu24ITFJs14BA98nP6BseF0ujh3MUbhUS
+         pNPA==
+X-Gm-Message-State: AOJu0Yzu9zaye4TZXRfvFSj3TVQsTQve8Sub4uGW6qf61aVnCBCcXaEx
+	fiUqjoY9jvjXc5xtI5fvLtlKhFNRH+QpnqqFmRx04P6b1DbaBglVMwqdl7OPDC1B4dYJiqDvyOO
+	rjCCb95/sybUweY+fmtIgT0wwT+FOBiaO5Q==
+X-Gm-Gg: ATEYQzytPUknmbZnzE2IpLuA8UXYoO3tsjpcUZJHK26L9cNrd0yGgQaTKmaLl+kpDpH
+	z9Bv17bujoD7PjOBpgb2AqABjA3iNUB8ezdikkxudOZntuPl07jnHMRrPR5uCS+7z+z6vds+cg2
+	CNE+LVlyoZKHNEUmp456kwGxt0bSkEmd4CNOLC3r37md30Oe1/NGHhhgYzrnvzW3V0WH4XUXjL5
+	tpfxDVMD2q4DqBXxu+gPdeyRxiR4kCx/6ASYC2P5t9wIH6qWEAnc377E5g0DN47v95AEmFF5Uwe
+	W2COiL6YnuWjxzTFluGhEH9QGXHgjcjsfvw=
+X-Received: by 2002:a05:6402:3587:b0:66a:19bd:5cb8 with SMTP id
+ 4fb4d7f45d1cf-66a82673223mr750511a12.18.1774397590038; Tue, 24 Mar 2026
+ 17:13:10 -0700 (PDT)
+MIME-Version: 1.0
+References: <69c20e8f-a652-44f8-9231-043807382f08@tenemos.jp>
+ <CAJU0B6GzTs+LaRhCALU0u+6BBWrGxVi_o1Ru=0cOF4top2e8jg@mail.gmail.com> <eb071555-fa88-4d47-a9f1-47e6187ff555@tenemos.jp>
+In-Reply-To: <eb071555-fa88-4d47-a9f1-47e6187ff555@tenemos.jp>
+From: company smile <smilecompany717@gmail.com>
+Date: Wed, 25 Mar 2026 09:12:58 +0900
+X-Gm-Features: AQROBzB9xpUC1RMVBkOqXdqPb0Us2LN7kVMN84WScGiM0PHCInBr0OzOdCgczXg
+Message-ID: <CAJU0B6FZ1OBP_=gNjZ2xGjNQ5izkw-U-q21nBLPY4TiXKy8UjA@mail.gmail.com>
+Subject: =?UTF-8?B?5rOo5paH44KI44KN44GX44GP44GK6aGY44GE44GX44G+44GZ44CC?=
+To: =?UTF-8?B?44OG44ON44Oi44K544ON44OD44OI5Y246LKp5aOy6YOo?= <order@tenemos.jp>
+Content-Type: multipart/alternative; boundary="0000000000000b6a85064dce228e"
+XSRV-Filter: order@tenemos.jp
+
+--0000000000000b6a85064dce228e
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: base64
+
+77yI5qCq77yJ44OG44ON44Oi44K544ON44OD44OIDQroj4Xljp/lhYvooYwg5qeYDQoNCuOBiuS4
+luipseOBq+OBquOBo+OBpuOBiuOCiuOBvuOBmeOAgg0K5rOo5paH44KI44KN44GX44GP44GK6aGY
+44GE44GX44G+44GZ44CCDQoNCg0K5rOo5paHDQrns5bonJwgMeOCseODvOOCuSgyMOWAiykNCuOD
+nuODiuOCpuOCqeODvOOCv+ODvCjkuK0p44K544OG44Oz44Os44K54pyW77iOMQ0KDQrku6XkuIrj
+gavjgarjgorjgb7jgZnjgIINCg0Kc21pbGVjb21wYW55DQrlpKflnaog5byY5rK7DQo=
+--0000000000000b6a85064dce228e
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div><div style=3D"font-size:inherit"><div dir=3D"auto" style=3D"color:rgb(=
+0,0,0);font-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;fon=
+t-style:normal;font-weight:400;letter-spacing:normal;text-indent:0px;text-t=
+ransform:none;white-space:normal;word-spacing:0px"><span style=3D"font-size=
+:inherit">=EF=BC=88=E6=A0=AA=EF=BC=89=E3=83=86=E3=83=8D=E3=83=A2=E3=82=B9=
+=E3=83=8D=E3=83=83=E3=83=88=E3=80=80</span><br></div></div></div><div><div =
+style=3D"font-size:inherit"><div dir=3D"auto" style=3D"color:rgb(0,0,0);fon=
+t-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;font-style:no=
+rmal;font-weight:400;letter-spacing:normal;text-indent:0px;text-transform:n=
+one;white-space:normal;word-spacing:0px">=E8=8F=85=E5=8E=9F=E5=85=8B=E8=A1=
+=8C=E3=80=80=E6=A7=98</div><div dir=3D"auto" style=3D"color:rgb(0,0,0);font=
+-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;font-style:nor=
+mal;font-weight:400;letter-spacing:normal;text-indent:0px;text-transform:no=
+ne;white-space:normal;word-spacing:0px"><br></div><div dir=3D"auto" style=
+=3D"color:rgb(0,0,0);font-family:&#39;-apple-system&#39;,sans-serif;font-si=
+ze:inherit;font-style:normal;font-weight:400;letter-spacing:normal;text-ind=
+ent:0px;text-transform:none;white-space:normal;word-spacing:0px">=E3=81=8A=
+=E4=B8=96=E8=A9=B1=E3=81=AB=E3=81=AA=E3=81=A3=E3=81=A6=E3=81=8A=E3=82=8A=E3=
+=81=BE=E3=81=99=E3=80=82</div><div dir=3D"auto" style=3D"color:rgb(0,0,0);f=
+ont-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;font-style:=
+normal;font-weight:400;letter-spacing:normal;text-indent:0px;text-transform=
+:none;white-space:normal;word-spacing:0px">=E6=B3=A8=E6=96=87=E3=82=88=E3=
+=82=8D=E3=81=97=E3=81=8F=E3=81=8A=E9=A1=98=E3=81=84=E3=81=97=E3=81=BE=E3=81=
+=99=E3=80=82</div><div dir=3D"auto" style=3D"color:rgb(0,0,0);font-family:&=
+#39;-apple-system&#39;,sans-serif;font-size:inherit;font-style:normal;font-=
+weight:400;letter-spacing:normal;text-indent:0px;text-transform:none;white-=
+space:normal;word-spacing:0px"><br></div><div dir=3D"auto" style=3D"color:r=
+gb(0,0,0);font-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;=
+font-style:normal;font-weight:400;letter-spacing:normal;text-indent:0px;tex=
+t-transform:none;white-space:normal;word-spacing:0px"><br></div><div dir=3D=
+"auto" style=3D"color:rgb(0,0,0);font-family:&#39;-apple-system&#39;,sans-s=
+erif;font-size:inherit;font-style:normal;font-weight:400;letter-spacing:nor=
+mal;text-indent:0px;text-transform:none;white-space:normal;word-spacing:0px=
+">=E6=B3=A8=E6=96=87</div><div dir=3D"auto" style=3D"color:rgb(0,0,0);font-=
+family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;font-style:norm=
+al;font-weight:400;letter-spacing:normal;text-indent:0px;text-transform:non=
+e;white-space:normal;word-spacing:0px">=E7=B3=96=E8=9C=9C 1=E3=82=B1=E3=83=
+=BC=E3=82=B9(20=E5=80=8B)</div><div dir=3D"auto" style=3D"color:rgb(0,0,0);=
+font-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;font-style=
+:normal;font-weight:400;letter-spacing:normal;text-indent:0px;text-transfor=
+m:none;white-space:normal;word-spacing:0px">=E3=83=9E=E3=83=8A=E3=82=A6=E3=
+=82=A9=E3=83=BC=E3=82=BF=E3=83=BC(=E4=B8=AD)=E3=82=B9=E3=83=86=E3=83=B3=E3=
+=83=AC=E3=82=B9=E2=9C=96=EF=B8=8E1</div><div dir=3D"auto" style=3D"color:rg=
+b(0,0,0);font-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;f=
+ont-style:normal;font-weight:400;letter-spacing:normal;text-indent:0px;text=
+-transform:none;white-space:normal;word-spacing:0px"><br></div><div dir=3D"=
+auto" style=3D"color:rgb(0,0,0);font-family:&#39;-apple-system&#39;,sans-se=
+rif;font-size:inherit;font-style:normal;font-weight:400;letter-spacing:norm=
+al;text-indent:0px;text-transform:none;white-space:normal;word-spacing:0px"=
+>=E4=BB=A5=E4=B8=8A=E3=81=AB=E3=81=AA=E3=82=8A=E3=81=BE=E3=81=99=E3=80=82</=
+div><div dir=3D"auto" style=3D"color:rgb(0,0,0);font-family:&#39;-apple-sys=
+tem&#39;,sans-serif;font-size:inherit;font-style:normal;font-weight:400;let=
+ter-spacing:normal;text-indent:0px;text-transform:none;white-space:normal;w=
+ord-spacing:0px"><br></div><div dir=3D"auto" style=3D"color:rgb(0,0,0);font=
+-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit;font-style:nor=
+mal;font-weight:400;letter-spacing:normal;text-indent:0px;text-transform:no=
+ne;white-space:normal;word-spacing:0px">smilecompany</div><div dir=3D"auto"=
+ style=3D"color:rgb(0,0,0);font-family:&#39;-apple-system&#39;,sans-serif;f=
+ont-size:inherit;font-style:normal;font-weight:400;letter-spacing:normal;te=
+xt-indent:0px;text-transform:none;white-space:normal;word-spacing:0px">=E5=
+=A4=A7=E5=9D=AA=E3=80=80=E5=BC=98=E6=B2=BB</div><div dir=3D"auto" style=3D"=
+color:rgb(0,0,0);font-family:&#39;-apple-system&#39;,sans-serif;font-size:i=
+nherit;font-style:normal;font-weight:400;letter-spacing:normal;text-indent:=
+0px;text-transform:none;white-space:normal;word-spacing:0px"><br></div><div=
+ dir=3D"auto" style=3D"color:rgb(0,0,0);font-family:&#39;-apple-system&#39;=
+,sans-serif;font-size:inherit;font-style:normal;font-weight:400;letter-spac=
+ing:normal;text-indent:0px;text-transform:none;white-space:normal;word-spac=
+ing:0px"><br></div><div dir=3D"auto" style=3D"color:rgb(0,0,0);font-family:=
+&#39;-apple-system&#39;,sans-serif;font-size:inherit;font-style:normal;font=
+-weight:400;letter-spacing:normal;text-indent:0px;text-transform:none;white=
+-space:normal;word-spacing:0px"><br></div><div dir=3D"auto" style=3D"color:=
+rgb(0,0,0);font-family:&#39;-apple-system&#39;,sans-serif;font-size:inherit=
+;font-style:normal;font-weight:400;letter-spacing:normal;text-indent:0px;te=
+xt-transform:none;white-space:normal;word-spacing:0px"><br></div><div dir=
+=3D"auto" style=3D"color:rgb(0,0,0);font-family:&#39;-apple-system&#39;,san=
+s-serif;font-size:inherit;font-style:normal;font-weight:400;letter-spacing:=
+normal;text-indent:0px;text-transform:none;white-space:normal;word-spacing:=
+0px"><br></div></div></div>
+
+--0000000000000b6a85064dce228e--

@@ -50,15 +50,18 @@ export function extractProductData(emailBody) {
     // 例: "1110 ノーマルレフィル　２４個"
     // 例: "1374 ペットアグア1リットル　１２本"
     // 注: キロは重量仕様（20キロ袋等）のため注文単位に含めない
-    const productPattern = /^(\d{4})\s+(.+?)[　\s]+([０-９\d]+)\s*(本|個|台|ケ|ヶ|セット|箱|袋|パック|ロット|冊)?$/;
+    const productPattern = /^(\d{4})\s+(.+?)[　\s]+([０-９\d]+)\s*(本|個|台|ケ|ヶ|ケース|セット|箱|袋|パック|ロット|冊)?$/;
 
     // 注文数量の単位（個、本、台等）— 容量単位（ℓ等）・重量単位（キロ等）は含めない
-    const orderUnits = '個|本|台|ケ|ヶ|セット|箱|袋|パック|ロット|冊';
+    const orderUnits = '個|本|台|ケ|ヶ|ケース|セット|箱|袋|パック|ロット|冊';
 
     // フォールバック: コード付き行で認識可能な数量がないもの（例: "1711 ボリビア岩塩 20キロ"）
     const codeFallbackPattern = /^(\d{4})\s+(.+)$/;
     // 注文数量パターン: 行末近くに「数字+注文単位」があるものを優先的に拾う
     const orderQuantityPattern = new RegExp(`([０-９\\d]+)\\s*(${orderUnits})`, 'g');
+    // 乗算記号パターン: ✖︎1、×2、✕3、x4 等（単位なし数量）
+    // ✖︎ = U+2716 + U+FE0E(variation selector)、× = U+00D7、✕ = U+2715
+    const multiplyQuantityPattern = /[✖✕×xX]\uFE0E?\s*([０-９\d]+)\s*$/;
 
     for (const line of lines) {
         const trimmedLine = line.trim();
@@ -99,6 +102,51 @@ export function extractProductData(emailBody) {
                 amount: 0
             });
             continue;
+        }
+
+        // コードなし: 乗算記号パターン（✖︎1、×2等）を先にチェック
+        // 「マナウォーター(中)ステンレス✖︎1」のように単位なしで数量を表す形式
+        const multiplyMatch = trimmedLine.match(multiplyQuantityPattern);
+        if (multiplyMatch) {
+            const quantityStr = zenToHan(multiplyMatch[1]);
+            const quantity = parseInt(quantityStr, 10);
+            // 乗算記号より前を商品名として抽出
+            const rawName = trimmedLine
+                .replace(multiplyQuantityPattern, '')
+                .replace(/(?:^|、\s*)(それから|また|あと|なお|ついでに)\s*/g, '')
+                .replace(/も?お願いし?[たまいすで。]*。?/g, '')
+                .replace(/も?注文し?[たまいすで。]*。?/g, '')
+                .replace(/ください。?/g, '')
+                .replace(/[以上よろしく。、]+$/g, '')
+                .replace(/[　\s]+/g, ' ')
+                .trim();
+
+            if (!isNaN(quantity) && quantity > 0 && rawName.length >= 2) {
+                let searchResults = searchProductsByText(rawName);
+                console.log(`商品名検索(乗算): "${rawName}" → ${searchResults.length}件マッチ`, searchResults.slice(0, 3));
+
+                if (searchResults.length === 1) {
+                    products.push({
+                        code: searchResults[0].code,
+                        name: searchResults[0].name,
+                        quantity: quantity,
+                        unit: '',
+                        unitPrice: 0,
+                        amount: 0
+                    });
+                } else {
+                    products.push({
+                        code: searchResults.length > 0 ? searchResults[0].code : '',
+                        name: rawName + (searchResults.length > 1 ? ` [候補${searchResults.length}件]` : ''),
+                        quantity: quantity,
+                        unit: '',
+                        unitPrice: 0,
+                        amount: 0,
+                        candidates: searchResults.length > 1 ? searchResults : undefined
+                    });
+                }
+                continue;
+            }
         }
 
         // コードなし: 行内に「数字+注文単位（個/本等）」があれば注文行とみなす

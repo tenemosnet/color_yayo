@@ -37,7 +37,10 @@ const MOCK_PRODUCTS = {
     '1800': { code: '1800', name: 'フリーエネルギー', category1: '', price1: 1500, price2: 0, price3: 0, lotSize: 0 },
     '1801': { code: '1801', name: 'フリーエネルギー小冊子', category1: '', price1: 300, price2: 0, price3: 0, lotSize: 0 },
     '1100': { code: '1100', name: 'ビダドロップ', category1: '', price1: 2750, price2: 0, price3: 0, lotSize: 0 },
-    '1110': { code: '1110', name: 'ノーマルレフィル', category1: '', price1: 990, price2: 0, price3: 0, lotSize: 0 }
+    '1110': { code: '1110', name: 'ノーマルレフィル', category1: '', price1: 990, price2: 0, price3: 0, lotSize: 0 },
+    '1500': { code: '1500', name: 'マナウォーター(中)ステンレス', category1: '', price1: 33000, price2: 0, price3: 0, lotSize: 0 },
+    '1511': { code: '1511', name: 'マナウォーター青 中', category1: '', price1: 8000, price2: 0, price3: 0, lotSize: 0 },
+    '1600': { code: '1600', name: '糖蜜', category1: '07', price1: 770, price2: 0, price3: 0, lotSize: 20 }
 };
 
 // localStorage モック
@@ -234,5 +237,48 @@ describe('山善（コードなし） パイプライン', () => {
     it('Step2: 署名ブロックの電話番号等は注文行として抽出されない', () => {
         // tel/fax行、メールアドレス行等が誤抽出されないこと
         expect(products).toHaveLength(3);
+    });
+});
+
+// ============================================================
+// smilecompany: Gmail multipart/alternative + base64、乗算記号パターン
+// ============================================================
+describe('smilecompany パイプライン', () => {
+    let parsed, products;
+
+    beforeEach(() => {
+        const eml = readEmlFixture('smilecompany.eml');
+        parsed = parseEmlFile(eml);
+        products = extractProductData(parsed.body);
+    });
+
+    it('Step1: EML解析 — base64本文をデコードしGmailドメインを抽出', () => {
+        expect(parsed.fromDomain).toBe('gmail.com');
+        expect(parsed.body).toContain('糖蜜');
+        expect(parsed.body).toContain('マナウォーター');
+    });
+
+    it('Step2: 商品抽出 — 2商品を抽出（ケース表記+乗算記号）', () => {
+        expect(products).toHaveLength(2);
+    });
+
+    it('Step2: 糖蜜 1ケース(20個) — 20個として抽出', () => {
+        expect(products[0]).toMatchObject({ quantity: 20, unit: '個' });
+    });
+
+    it('Step2: マナウォーター✖︎1 — 乗算記号パターンで数量1を抽出', () => {
+        expect(products[1]).toMatchObject({ quantity: 1, unit: '' });
+    });
+
+    it('Step3: スコアリング — 糖蜜が正しくマッチ', () => {
+        expect(products[0].code).toBe('1600');
+    });
+
+    it('Step3: スコアリング — マナウォーター(中)ステンレスが正しくマッチ', () => {
+        expect(products[1].code).toBe('1500');
+    });
+
+    it('Step2: 署名ブロック（smilecompany/大坪弘治）は注文行として抽出されない', () => {
+        expect(products).toHaveLength(2);
     });
 });
