@@ -376,8 +376,17 @@ export function searchProductsByText(searchText) {
         }
     }
 
-    // スコア降順 → バイグラム類似度降順 → 商品名が短い方を優先
-    results.sort((a, b) => b.score - a.score || b.bigramScore - a.bigramScore || a.name.length - b.name.length);
+    // 卸・テネモスバリアント判定（末尾が「卸」「ﾃﾈﾓｽ」「テネモス」の商品）
+    // 同一商品が1XXX(メイン)/2XXX(卸)/3XXX(ﾃﾈﾓｽ)で登録されている場合にメインを優先
+    const isVariant = (name) => /[　\s]*(卸|ﾃﾈﾓｽ|テネモス)$/.test(name.trim());
+
+    // スコア降順 → バイグラム類似度降順 → メイン商品優先 → 商品名が短い方を優先
+    results.sort((a, b) =>
+        b.score - a.score ||
+        b.bigramScore - a.bigramScore ||
+        (isVariant(a.name) ? 1 : 0) - (isVariant(b.name) ? 1 : 0) ||
+        a.name.length - b.name.length
+    );
 
     // デバッグ: 検索テキストとキーワード、正規化済みテキストを出力
     if (results.length > 0) {
