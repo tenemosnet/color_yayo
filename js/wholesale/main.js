@@ -668,9 +668,9 @@ function displayDetectedCustomer(customer) {
     if (!infoElement) return;
 
     const priceTypeLabel = {
-        1: '売上単価１',
-        2: '売上単価２',
-        3: '売上単価３'
+        1: '上代',
+        2: '売上単価１（卸１次店単価）',
+        3: '売上単価２（卸２次店単価）'
     };
 
     infoElement.innerHTML = `
