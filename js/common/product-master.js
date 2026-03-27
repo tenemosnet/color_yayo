@@ -300,7 +300,7 @@ function normalizeForSearch(text) {
         .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
         .replace(/[ℓＬｌ]/g, 'リットル')
         .replace(/(\d)\s*[Ll]\b/g, '$1リットル')
-        .replace(/（/g, '(').replace(/）/g, ')')  // 全角括弧→半角に統一
+        .replace(/[（()）]/g, '')  // 括弧を除去（全角・半角とも）
         .replace(/[　\s]+/g, '')
         .toLowerCase();
 }
