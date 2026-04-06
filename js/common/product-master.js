@@ -211,11 +211,13 @@ export function getWholesalePrice(code, priceType = 2, { fallback = false } = {}
     if (!product) return 0;
 
     // 指定された単価種類で取得
+    // 弥生の単価種類: 1=上代(price1), 2=売上単価１(price2), 3=売上単価２(price2)
+    // 単価種類3は弥生上「売上単価２」だが、商品マスタの税抜売上単価２を参照する
     let price = 0;
     switch (priceType) {
         case 1: price = product.price1 || 0; break;
         case 2: price = product.price2 || 0; break;
-        case 3: price = product.price3 || 0; break;
+        case 3: price = product.price2 || 0; break;
         default: price = product.price2 || 0; break;
     }
 
