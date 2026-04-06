@@ -81,61 +81,82 @@ export function parseMurakamiOrderPdf(text) {
 
     // 除外すべきコード（日付などから誤検出される可能性）
     const excludeCodes = new Set(['2024', '2025', '2026', '2027', '2028', '2029', '2030']);
-    const processedCodes = new Set();
 
-    // 商品コード（4桁、1または2で始まる）を検出
+    // 全コードの位置を収集
     const codePattern = /\b([12]\d{3})\b/g;
+    const codePositions = [];
     let match;
 
     while ((match = codePattern.exec(normalizedText)) !== null) {
         const code = match[1];
-        if (excludeCodes.has(code) || processedCodes.has(code)) continue;
+        if (excludeCodes.has(code)) continue;
+        if (codePositions.find(p => p.code === code)) continue;
+        codePositions.push({ code, index: match.index });
+    }
 
-        // コードの後のテキストを取得（次のコードまで）
-        const startPos = match.index + match[0].length;
-        const nextCodeMatch = normalizedText.substring(startPos).match(/\b[12]\d{3}\b/);
-        const endPos = nextCodeMatch
-            ? startPos + nextCodeMatch.index
-            : Math.min(startPos + 200, normalizedText.length);
+    console.log('検出コード:', codePositions.map(p => p.code));
 
-        const segment = normalizedText.substring(startPos, endPos);
+    // PDF.jsのテキスト抽出では列順序が視覚順と異なる場合がある
+    // 村上印の場合: [数量,単価,金額] が コード の前に出現する
+    // 各コードの「前」のセグメントでトリプレット（数量×単価=金額）を探す
+    for (let ci = 0; ci < codePositions.length; ci++) {
+        const { code, index: codeIndex } = codePositions[ci];
 
-        // セグメントから数字を抽出（カンマ付き数字も1つとして認識）
-        const numbers = segment.match(/\b\d{1,3}(?:,\d{3})*\b/g);
-        if (!numbers || numbers.length < 3) continue;
+        // 前のコード終端から、このコード開始までのセグメント
+        const prevEnd = ci > 0 ? codePositions[ci - 1].index + codePositions[ci - 1].code.length : 0;
+        const beforeSegment = normalizedText.substring(prevEnd, codeIndex);
 
-        const parsedNumbers = numbers.map(n => parseInt(n.replace(/,/g, ''), 10));
+        // 後のセグメント（このコードから次のコードまで）
+        const afterStart = codeIndex + code.length;
+        const nextStart = ci + 1 < codePositions.length ? codePositions[ci + 1].index : Math.min(afterStart + 200, normalizedText.length);
+        const afterSegment = normalizedText.substring(afterStart, nextStart);
 
-        console.log(`解析中（村上印）: コード=${code}, 数字列=${JSON.stringify(parsedNumbers)}`);
+        // 前のセグメントを優先して検索、なければ後を検索
+        const triplet = findTriplet(beforeSegment, code, '前') || findTriplet(afterSegment, code, '後');
 
-        // 村上印フォーマット: 数量 × 単価 = 金額 のトリプレットを検出
-        let quantity = null;
-        for (let i = 0; i < parsedNumbers.length - 2; i++) {
-            const qty = parsedNumbers[i];
-            const price = parsedNumbers[i + 1];
-            const amount = parsedNumbers[i + 2];
-
-            if (qty > 0 && qty < 1000 && price > 0 && qty * price === amount) {
-                quantity = qty;
-                console.log(`  トリプレット検出: 数量=${qty}, 単価=${price}, 金額=${amount}`);
-                break;
-            }
-        }
-
-        if (quantity !== null && quantity > 0) {
+        if (triplet) {
             result.products.push({
                 code: code,
-                quantity: quantity,
+                quantity: triplet.quantity,
                 unit: '',
                 lotSize: null
             });
-            processedCodes.add(code);
-            console.log(`注文検出: コード=${code}, 数量=${quantity}`);
+            console.log(`注文検出: コード=${code}, 数量=${triplet.quantity}`);
         }
     }
 
     console.log('村上印 抽出された注文商品:', result.products);
     return result;
+}
+
+/**
+ * セグメント内から数量×単価=金額のトリプレットを検出
+ * @param {string} segment - テキストセグメント
+ * @param {string} code - デバッグ用コード
+ * @param {string} direction - デバッグ用方向（'前'/'後'）
+ * @returns {Object|null} { quantity, price, amount } or null
+ */
+function findTriplet(segment, code, direction) {
+    const numbers = segment.match(/\b\d{1,3}(?:,\d{3})*\b/g);
+    if (!numbers || numbers.length < 3) return null;
+
+    const parsedNumbers = numbers.map(n => parseInt(n.replace(/,/g, ''), 10));
+
+    console.log(`解析中（村上印・${direction}）: コード=${code}, 数字列=${JSON.stringify(parsedNumbers)}`);
+
+    for (let i = 0; i < parsedNumbers.length - 2; i++) {
+        const qty = parsedNumbers[i];
+        const price = parsedNumbers[i + 1];
+        const amount = parsedNumbers[i + 2];
+
+        // 数量: 1-999、単価: 100以上（住所番地等の誤検出防止）、積が一致
+        if (qty > 0 && qty < 1000 && price >= 100 && qty * price === amount) {
+            console.log(`  トリプレット検出（${direction}）: 数量=${qty}, 単価=${price}, 金額=${amount}`);
+            return { quantity: qty, price, amount };
+        }
+    }
+
+    return null;
 }
 
 /**

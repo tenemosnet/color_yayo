@@ -58,12 +58,14 @@ describe('parseOrderTable', () => {
 });
 
 describe('parseMurakamiOrderPdf', () => {
-    it('村上印フォーマット（数量×単価=金額）から商品を抽出する', () => {
-        const text = '発注書 ㈱テネモスネット 様 発注日 2026-04-03 株式会社村上印オーガニック ' +
-            '摘要 数量 単価 明細金額 ' +
-            '1369 アグア650ml 24 P 1,720 41,280 ' +
-            '1396 遮光スプレー200ml 24 本 624 14,976 ' +
-            '1226 ビダソープ 5L 4 個 12,848 51,392';
+    it('PDF.js実抽出順序（数値がコードの前に出現）から商品を正しく抽出する', () => {
+        // PDF.jsの実際の抽出順序: [行N数値] [行Nコード+商品名] [行N+1数値] [行N+1コード+商品名] ...
+        const text = '合計 / 円 発注書 数量 単価 摘要 明細金額 ' +
+            '24 P 1,720 41,280 1369 アグア 650ml ' +
+            '24 本 624 14,976 1396 遮光スプレー 200ml ' +
+            '4 個 12,848 51,392 1226 ビダソープ 5L ' +
+            '97,862 円 小計 株式会社村上印オーガニック 107,648 2026-04-03 ' +
+            '〒 343-0111 埼玉県北葛飾郡松伏町松伏 2305-1';
         const result = parseMurakamiOrderPdf(text);
 
         expect(result.companyName).toBe('村上印オーガニック');
@@ -74,8 +76,27 @@ describe('parseMurakamiOrderPdf', () => {
         expect(result.products[2]).toMatchObject({ code: '1226', quantity: 4 });
     });
 
-    it('日付コード（2026等）を商品コードとして誤検出しない', () => {
-        const text = '発注日 2026-04-03 1369 アグア650ml 24 P 1,720 41,280';
+    it('住所の番地（2305-1等）を商品コードとして誤検出しない', () => {
+        const text = '24 P 1,720 41,280 1369 アグア 650ml ' +
+            '〒 343-0111 埼玉県北葛飾郡松伏町松伏 2305-1 ' +
+            '10% 対象 10% 消費税 333-0826 86-6 2026-04-03';
+        const result = parseMurakamiOrderPdf(text);
+        expect(result.products).toHaveLength(1);
+        expect(result.products[0].code).toBe('1369');
+    });
+
+    it('数値がコードの後に出現する順序でも動作する（フォールバック）', () => {
+        const text = '発注書 2026-04-03 株式会社村上印オーガニック ' +
+            '1369 アグア650ml 24 P 1,720 41,280 ' +
+            '1396 遮光スプレー200ml 24 本 624 14,976';
+        const result = parseMurakamiOrderPdf(text);
+        expect(result.products).toHaveLength(2);
+        expect(result.products[0]).toMatchObject({ code: '1369', quantity: 24 });
+        expect(result.products[1]).toMatchObject({ code: '1396', quantity: 24 });
+    });
+
+    it('日付コード（2026等）を除外する', () => {
+        const text = '発注日 2026-04-03 24 P 1,720 41,280 1369 アグア 650ml';
         const result = parseMurakamiOrderPdf(text);
         expect(result.products).toHaveLength(1);
         expect(result.products[0].code).toBe('1369');
