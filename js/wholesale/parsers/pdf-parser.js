@@ -43,8 +43,11 @@ export async function readPdfFile(file) {
  * @returns {Object} 解析結果
  */
 function detectAndParsePdf(text) {
+    // PDF.jsのテキスト抽出ではスペースが混入するため、除去して判定
+    const noSpace = text.replace(/\s+/g, '');
+
     // 村上印オーガニック検出
-    if (text.match(/村上印オーガニック|村上印ｵｰｶﾞﾆｯｸ/)) {
+    if (noSpace.includes('村上印オーガニック') || noSpace.includes('村上印ｵｰｶﾞﾆｯｸ')) {
         console.log('村上印オーガニック発注書を検出');
         return parseMurakamiOrderPdf(text);
     }
