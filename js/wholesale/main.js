@@ -430,7 +430,7 @@ async function handleEmlFile(file) {
 }
 
 /**
- * PDFファイルを処理（やつは注文書 / FAX注文書を自動判定）
+ * PDFファイルを処理（テキストPDF注文書 / FAX注文書を自動判定）
  * @param {File} file
  */
 async function handlePdfFile(file) {
@@ -446,10 +446,10 @@ async function handlePdfFile(file) {
             isFax = true;
             console.log('FAX PDF解析結果:', pdfData);
         } catch (faxError) {
-            // FAX PDFでなければ、やつはPDFパーサーで解析
-            console.log('FAX PDFではありません、やつはパーサーで解析:', faxError.message);
+            // FAX PDFでなければ、テキストPDFパーサーで解析（やつは・村上印等）
+            console.log('FAX PDFではありません、テキストPDFパーサーで解析:', faxError.message);
             pdfData = await readPdfFile(file);
-            console.log('やつはPDF解析結果:', pdfData);
+            console.log('テキストPDF解析結果:', pdfData);
         }
 
         // ファイル名を保存・表示
@@ -472,7 +472,7 @@ async function handlePdfFile(file) {
                 }
             }
         } else if (pdfData.companyName) {
-            // やつはPDF: 会社名から検索
+            // テキストPDF: 会社名から検索
             detectedCustomer = findCustomerByName(pdfData.companyName);
             if (detectedCustomer) {
                 console.log('顧客検出成功:', detectedCustomer);

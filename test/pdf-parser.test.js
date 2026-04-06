@@ -1,9 +1,9 @@
 /**
  * pdf-parser.js 単体テスト
- * テキストPDF（やつは等）の注文テーブル解析
+ * テキストPDF（やつは・村上印等）の注文テーブル解析
  */
 import { describe, it, expect } from 'vitest';
-import { parseOrderTable } from '../js/wholesale/parsers/pdf-parser.js';
+import { parseOrderTable, parseMurakamiOrderPdf } from '../js/wholesale/parsers/pdf-parser.js';
 
 describe('parseOrderTable', () => {
     it('標準的な注文テーブルから商品を抽出する', () => {
@@ -54,5 +54,37 @@ describe('parseOrderTable', () => {
         const products = parseOrderTable(text);
         expect(products).toHaveLength(1);
         expect(products[0].quantity).toBe(24);
+    });
+});
+
+describe('parseMurakamiOrderPdf', () => {
+    it('村上印フォーマット（数量×単価=金額）から商品を抽出する', () => {
+        const text = '発注書 ㈱テネモスネット 様 発注日 2026-04-03 株式会社村上印オーガニック ' +
+            '摘要 数量 単価 明細金額 ' +
+            '1369 アグア650ml 24 P 1,720 41,280 ' +
+            '1396 遮光スプレー200ml 24 本 624 14,976 ' +
+            '1226 ビダソープ 5L 4 個 12,848 51,392';
+        const result = parseMurakamiOrderPdf(text);
+
+        expect(result.companyName).toBe('村上印オーガニック');
+        expect(result.date).toBe('20260403');
+        expect(result.products).toHaveLength(3);
+        expect(result.products[0]).toMatchObject({ code: '1369', quantity: 24 });
+        expect(result.products[1]).toMatchObject({ code: '1396', quantity: 24 });
+        expect(result.products[2]).toMatchObject({ code: '1226', quantity: 4 });
+    });
+
+    it('日付コード（2026等）を商品コードとして誤検出しない', () => {
+        const text = '発注日 2026-04-03 1369 アグア650ml 24 P 1,720 41,280';
+        const result = parseMurakamiOrderPdf(text);
+        expect(result.products).toHaveLength(1);
+        expect(result.products[0].code).toBe('1369');
+    });
+
+    it('商品がないテキストは空配列を返す', () => {
+        const text = '発注書 株式会社村上印オーガニック 2026-04-03';
+        const result = parseMurakamiOrderPdf(text);
+        expect(result.products).toHaveLength(0);
+        expect(result.date).toBe('20260403');
     });
 });

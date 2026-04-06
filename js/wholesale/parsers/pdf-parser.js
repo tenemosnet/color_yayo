@@ -1,5 +1,5 @@
 /**
- * pdf-parser.js - やつは様PDF注文書パーサー
+ * pdf-parser.js - PDF注文書パーサー（やつは様・村上印オーガニック様等）
  * PDFから商品コードと数量を抽出
  */
 
@@ -30,10 +30,108 @@ export async function readPdfFile(file) {
     console.log('PDF全文抽出完了');
     console.log('抽出テキスト（先頭500文字）:', fullText.substring(0, 500));
 
-    // 注文データを解析
-    const result = parseYatsuhaOrderPdf(fullText);
+    // 会社名で判定し、適切なパーサーに振り分け
+    const result = detectAndParsePdf(fullText);
     result.fileName = file.name;
 
+    return result;
+}
+
+/**
+ * PDFテキストから会社名を検出し、適切なパーサーに振り分け
+ * @param {string} text - PDFから抽出したテキスト
+ * @returns {Object} 解析結果
+ */
+function detectAndParsePdf(text) {
+    // 村上印オーガニック検出
+    if (text.match(/村上印オーガニック|村上印ｵｰｶﾞﾆｯｸ/)) {
+        console.log('村上印オーガニック発注書を検出');
+        return parseMurakamiOrderPdf(text);
+    }
+
+    // デフォルト: やつはパーサー
+    return parseYatsuhaOrderPdf(text);
+}
+
+/**
+ * 村上印オーガニック様発注書PDFのテキストを解析
+ * フォーマット: コード(4桁) + 商品名 + 数量 + 単位(P/本/個等) + 単価 + 金額
+ * @param {string} text - PDFから抽出したテキスト
+ * @returns {Object} 解析結果
+ */
+export function parseMurakamiOrderPdf(text) {
+    const result = {
+        date: null,
+        companyName: '村上印オーガニック',
+        products: []
+    };
+
+    // 日付を抽出（YYYY-MM-DD形式）
+    const dateMatch = text.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (dateMatch) {
+        result.date = `${dateMatch[1]}${dateMatch[2]}${dateMatch[3]}`;
+        console.log('日付抽出:', result.date);
+    }
+
+    // テキストを正規化
+    const normalizedText = text.replace(/\s+/g, ' ');
+
+    // 除外すべきコード（日付などから誤検出される可能性）
+    const excludeCodes = new Set(['2024', '2025', '2026', '2027', '2028', '2029', '2030']);
+    const processedCodes = new Set();
+
+    // 商品コード（4桁、1または2で始まる）を検出
+    const codePattern = /\b([12]\d{3})\b/g;
+    let match;
+
+    while ((match = codePattern.exec(normalizedText)) !== null) {
+        const code = match[1];
+        if (excludeCodes.has(code) || processedCodes.has(code)) continue;
+
+        // コードの後のテキストを取得（次のコードまで）
+        const startPos = match.index + match[0].length;
+        const nextCodeMatch = normalizedText.substring(startPos).match(/\b[12]\d{3}\b/);
+        const endPos = nextCodeMatch
+            ? startPos + nextCodeMatch.index
+            : Math.min(startPos + 200, normalizedText.length);
+
+        const segment = normalizedText.substring(startPos, endPos);
+
+        // セグメントから数字を抽出（カンマ付き数字も1つとして認識）
+        const numbers = segment.match(/\b\d{1,3}(?:,\d{3})*\b/g);
+        if (!numbers || numbers.length < 3) continue;
+
+        const parsedNumbers = numbers.map(n => parseInt(n.replace(/,/g, ''), 10));
+
+        console.log(`解析中（村上印）: コード=${code}, 数字列=${JSON.stringify(parsedNumbers)}`);
+
+        // 村上印フォーマット: 数量 × 単価 = 金額 のトリプレットを検出
+        let quantity = null;
+        for (let i = 0; i < parsedNumbers.length - 2; i++) {
+            const qty = parsedNumbers[i];
+            const price = parsedNumbers[i + 1];
+            const amount = parsedNumbers[i + 2];
+
+            if (qty > 0 && qty < 1000 && price > 0 && qty * price === amount) {
+                quantity = qty;
+                console.log(`  トリプレット検出: 数量=${qty}, 単価=${price}, 金額=${amount}`);
+                break;
+            }
+        }
+
+        if (quantity !== null && quantity > 0) {
+            result.products.push({
+                code: code,
+                quantity: quantity,
+                unit: '',
+                lotSize: null
+            });
+            processedCodes.add(code);
+            console.log(`注文検出: コード=${code}, 数量=${quantity}`);
+        }
+    }
+
+    console.log('村上印 抽出された注文商品:', result.products);
     return result;
 }
 

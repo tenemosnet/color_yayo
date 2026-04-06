@@ -63,6 +63,12 @@ export const VENDORS = {
         code: '006146',
         nounyuCode: '002',
         detect: { type: 'eml' }
+    },
+    MURAKAMI_IN: {
+        code: '006139',
+        nounyuCode: '002',
+        detect: { type: 'pdf-text' },
+        japaneseName: '村上印オーガニック'
     }
 };
 
