@@ -267,6 +267,7 @@ export function parseYayoiCSV(csvText) {
         customerCode: headerRow.indexOf('コード'),
         name: headerRow.indexOf('名称'),
         furigana: headerRow.indexOf('フリガナ'),
+        address1: headerRow.indexOf('住所１'),
         phone: headerRow.indexOf('TEL'),
         email: headerRow.indexOf('メールアドレス')
     };
@@ -276,6 +277,7 @@ export function parseYayoiCSV(csvText) {
     console.log('  - コード:', indices.customerCode, `→ "${headerRow[indices.customerCode]}"`);
     console.log('  - 名称:', indices.name, `→ "${headerRow[indices.name]}"`);
     console.log('  - フリガナ:', indices.furigana, `→ "${headerRow[indices.furigana]}"`);
+    console.log('  - 住所１:', indices.address1, `→ "${headerRow[indices.address1]}"`);
     console.log('  - TEL:', indices.phone, `→ "${headerRow[indices.phone]}"`);
     console.log('  - メールアドレス:', indices.email, `→ "${headerRow[indices.email]}"`);
 
@@ -287,6 +289,7 @@ export function parseYayoiCSV(csvText) {
     // 推奨項目の警告
     const warnings = [];
     if (indices.furigana === -1) warnings.push('フリガナ');
+    if (indices.address1 === -1) warnings.push('住所１');
     if (indices.phone === -1) warnings.push('TEL');
     if (indices.email === -1) warnings.push('メールアドレス');
 
@@ -313,10 +316,14 @@ export function parseYayoiCSV(csvText) {
 
         // コードと名称が存在する行のみ追加
         if (customerCode && name) {
+            const address1 = indices.address1 !== -1 ? (columns[indices.address1] || '').trim() : '';
+            const prefMatch = address1.match(/^(北海道|東京都|大阪府|京都府|.{2,3}県)/);
             customers.push({
                 customerCode: customerCode.trim(),
                 name: name.trim(),
                 furigana: indices.furigana !== -1 ? (columns[indices.furigana] || '').trim() : '',
+                address1: address1,
+                prefecture: prefMatch ? prefMatch[1] : '',
                 phone: indices.phone !== -1 ? (columns[indices.phone] || '').trim() : '',
                 email: indices.email !== -1 ? (columns[indices.email] || '').trim() : ''
             });
