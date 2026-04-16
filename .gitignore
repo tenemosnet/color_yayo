@@ -7,3 +7,8 @@ node_modules/
 # Screenshots and sample data
 *.png
 *.csv
+
+# 実データ（注文メール、FAX、マスタ、発注書等）
+*.eml
+*.xlsx
+*.pdf
