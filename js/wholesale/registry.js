@@ -69,6 +69,14 @@ export const VENDORS = {
         nounyuCode: '002',
         detect: { type: 'pdf-text' },
         japaneseName: '村上印オーガニック'
+    },
+    LA_NATURA: {
+        code: '002232',
+        // nounyuCode: getNounyuCodeByCustomer() で顧客マスタの取引区分から自動決定
+        // 注意: 001695 は本社文書用の別コード（注文処理には使用しない）
+        detect: { type: 'pdf-text' },
+        domain: 'homeo-re',
+        japaneseName: 'La Natura株式会社'
     }
 };
 

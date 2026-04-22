@@ -6,8 +6,8 @@ import { describe, it, expect } from 'vitest';
 import { VENDORS, getNounyuCodeByCustomer, getDomainToNameMapping, getFaxCustomerCodes } from '../js/wholesale/registry.js';
 
 describe('VENDORS', () => {
-    it('8社の取引先が定義されている', () => {
-        expect(Object.keys(VENDORS)).toHaveLength(8);
+    it('9社の取引先が定義されている', () => {
+        expect(Object.keys(VENDORS)).toHaveLength(9);
         expect(VENDORS.YAMAZEN).toBeDefined();
         expect(VENDORS.YATSUHA).toBeDefined();
         expect(VENDORS.OPTIMAL).toBeDefined();
@@ -16,12 +16,16 @@ describe('VENDORS', () => {
         expect(VENDORS.ABE_NATURAL).toBeDefined();
         expect(VENDORS.PONOMAIL).toBeDefined();
         expect(VENDORS.MURAKAMI_IN).toBeDefined();
+        expect(VENDORS.LA_NATURA).toBeDefined();
     });
 
-    it('各取引先にcodeとnounyuCodeがある', () => {
+    it('各取引先にcodeがある（nounyuCodeは任意）', () => {
         for (const vendor of Object.values(VENDORS)) {
             expect(vendor.code).toMatch(/^\d{6}$/);
-            expect(vendor.nounyuCode).toMatch(/^\d{3}$/);
+            // nounyuCodeがある場合は3桁数字であること
+            if (vendor.nounyuCode !== undefined) {
+                expect(vendor.nounyuCode).toMatch(/^\d{3}$/);
+            }
         }
     });
 });
@@ -63,6 +67,7 @@ describe('getDomainToNameMapping', () => {
         expect(mapping.yamazen).toBe('山善');
         expect(mapping.yatsuha).toBe('やつは');
         expect(mapping.abenatural).toBe('アベナチュラル');
+        expect(mapping['homeo-re']).toBe('La Natura株式会社');
     });
 });
 

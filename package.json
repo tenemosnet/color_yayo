@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "encoding-japanese": "^2.2.0",
+    "pdfjs-dist": "^3.11.174",
     "vitest": "^4.0.18"
   }
 }

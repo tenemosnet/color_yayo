@@ -315,10 +315,12 @@ export function parseOrderTable(text) {
     const excludeCodes = new Set(['2026', '2025', '2027', '2024', '2028', '2029', '2030']);
 
     // PDFテーブルの構造:
-    // コード 商品名 小売価格 卸価格 卸単位 摘要(数量)
-    // 例: 1110 ビダクリームノーマルレフィル(30ml) 2,640 1,584 12 48
-    // 例: 1111 ビダクリームまこもレフィル(30ml) 3,190 1,914 12 12 ← 卸単位と数量が同じ
-    // 例: 1396 遮光スプレー200ml空容器 800 560 6 6 ← 卸単位と数量が同じ
+    // パターンA（やつは等）: コード 商品名 小売価格 卸価格 卸単位 注文数
+    // パターンB（La Natura等）: コード 商品名 小売(税抜) 小売(税込) 卸価格(税込) 卸単位 掛率 注文数
+    // 掛率列の有無はヘッダーキーワードで自動判定
+
+    // 掛率列があるか判定（La Natura形式の卸価格表）
+    const hasKakeritsu = text.includes('掛率');
 
     // 商品コード（4桁、1または2で始まる）を検出
     const codePattern = /\b([12]\d{3})\b/g;
@@ -342,13 +344,17 @@ export function parseOrderTable(text) {
 
         const segment = text.substring(startPos, endPos);
 
-        // 「消費税8%」「卸8掛」「電話番号」などのパターンを除外
+        // 「消費税8%」「卸8掛」「電話番号」「納期」などのパターンを除外
         const cleanedSegment = segment
             .replace(/消費税\d+%/g, '')
             .replace(/卸\d+掛/g, '')
             .replace(/税\d+%/g, '')
             .replace(/TEL[:\s]*[\d\-]+/gi, '')  // 電話番号を除外
-            .replace(/\d{2,4}-\d{2,4}-\d{4}/g, '');  // ハイフン区切りの電話番号を除外
+            .replace(/\d{2,4}-\d{2,4}-\d{4}/g, '')  // ハイフン区切りの電話番号を除外
+            .replace(/納期\d+[日週間月]+/g, '')  // 「納期40日」「納期3週間」等を除外
+            .replace(/\d+φ/g, '')  // ホース径「6φ」「8φ」等を除外
+            .replace(/－\d+\s+商品卸価格表/g, '')  // ページヘッダー「－2 商品卸価格表」等を除外
+            .replace(/(?:御社名|ＴＥＬ).+$/g, '')  // ページフッター（御社名・TEL記入欄）を除外
 
         // セグメントから数字を抽出（スペースで区切られた独立した数字）
         const numbers = cleanedSegment.match(/\b\d{1,3}(?:,\d{3})*\b|\b\d+\b/g);
@@ -373,7 +379,10 @@ export function parseOrderTable(text) {
         let quantity = null;
         let lotSize = null;
 
-        // 数字列から「小売価格, 卸価格, 卸単位, 数量」のパターンを探す
+        // 数字列から「小売価格, 卸価格, 卸単位, [掛率], 数量」のパターンを探す
+        // 掛率列がある場合は卸単位の次を掛率としてスキップし、その次を注文数量とする
+        const qtyOffset = hasKakeritsu ? 4 : 3;  // 数量の位置オフセット
+
         for (let i = 0; i < parsedNumbers.length - 2; i++) {
             const n1 = parsedNumbers[i];      // 小売価格候補
             const n2 = parsedNumbers[i + 1];  // 卸価格候補
@@ -384,14 +393,18 @@ export function parseOrderTable(text) {
             // - 卸価格 < 小売価格（卸は安い）
             // - 卸単位は小さい数字（1-20程度）
             if (n1 >= 300 && n2 < n1 && n2 > 0 && unitCandidates.includes(n3)) {
-                // 卸単位の後に数字があれば、それが注文数量
-                if (i + 3 < parsedNumbers.length) {
-                    const n4 = parsedNumbers[i + 3];
+                // 卸単位の後（掛率列がある場合はさらにその後）に数字があれば、それが注文数量
+                if (i + qtyOffset < parsedNumbers.length) {
+                    const nQty = parsedNumbers[i + qtyOffset];
                     // 注文数量は通常 1-999
-                    if (n4 > 0 && n4 < 1000) {
-                        quantity = n4;
+                    if (nQty > 0 && nQty < 1000) {
+                        quantity = nQty;
                         lotSize = n3;
-                        console.log(`  パターン1検出: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${n4}`);
+                        if (hasKakeritsu) {
+                            console.log(`  パターン1検出（掛率あり）: 小売=${n1}, 卸=${n2}, 単位=${n3}, 掛率=${parsedNumbers[i + 3]}, 数量=${nQty}`);
+                        } else {
+                            console.log(`  パターン1検出: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${nQty}`);
+                        }
                         break;
                     }
                 }
@@ -422,19 +435,22 @@ export function parseOrderTable(text) {
         }
 
         // パターン3: 低価格商品用（800, 560, 6, 6 のようなケース）
-        if (quantity === null && parsedNumbers.length >= 4) {
+        if (quantity === null && parsedNumbers.length >= (3 + qtyOffset - 2)) {
             for (let i = 0; i < parsedNumbers.length - 3; i++) {
                 const n1 = parsedNumbers[i];
                 const n2 = parsedNumbers[i + 1];
                 const n3 = parsedNumbers[i + 2];
-                const n4 = parsedNumbers[i + 3];
+                const qtyIdx = i + qtyOffset;
 
                 // 低価格商品: 小売 >= 100, 卸 < 小売, 卸単位は小さい数字
-                if (n1 >= 100 && n2 < n1 && n2 > 0 && unitCandidates.includes(n3) && n4 > 0 && n4 < 1000) {
-                    quantity = n4;
-                    lotSize = n3;
-                    console.log(`  パターン3検出（低価格）: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${n4}`);
-                    break;
+                if (n1 >= 100 && n2 < n1 && n2 > 0 && unitCandidates.includes(n3) && qtyIdx < parsedNumbers.length) {
+                    const nQty = parsedNumbers[qtyIdx];
+                    if (nQty > 0 && nQty < 1000) {
+                        quantity = nQty;
+                        lotSize = n3;
+                        console.log(`  パターン3検出（低価格）: 小売=${n1}, 卸=${n2}, 単位=${n3}, 数量=${nQty}`);
+                        break;
+                    }
                 }
             }
         }

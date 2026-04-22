@@ -12,6 +12,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { parseEmlFile } from '../js/wholesale/parsers/eml-parser.js';
 import { extractProductData } from '../js/wholesale/parsers/text-parser.js';
+import { parseOrderTable } from '../js/wholesale/parsers/pdf-parser.js';
 import { searchProductsByText, clearProductMaster } from '../js/common/product-master.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -280,5 +281,70 @@ describe('smilecompany パイプライン', () => {
 
     it('Step2: 署名ブロック（smilecompany/大坪弘治）は注文行として抽出されない', () => {
         expect(products).toHaveLength(2);
+    });
+});
+
+// ============================================================
+// La Natura: PDF添付注文書（やつは形式4ページ）
+// ============================================================
+describe('La Natura パイプライン', () => {
+    let parsed, pdfProducts;
+
+    beforeEach(() => {
+        // Step1: EMLからドメイン・PDF添付を検出
+        const eml = readEmlFixture('Re 発注のお願い【La Natura株式会社】.eml');
+        parsed = parseEmlFile(eml);
+
+        // Step2: PDF抽出テキスト（PDF.jsはNode.js非対応のためフィクスチャテキストを使用）
+        const pdfText = readFileSync(resolve(__dirname, 'fixtures/pdf-text/lanatura.txt'), 'utf-8');
+        pdfProducts = parseOrderTable(pdfText);
+    });
+
+    it('Step1: EML解析 — 送信元ドメインがhomeo-re.comであること', () => {
+        expect(parsed.fromDomain).toBe('homeo-re.com');
+    });
+
+    it('Step1: EML解析 — PDF添付ファイルが存在すること', () => {
+        expect(parsed.subject).toContain('La Natura');
+    });
+
+    it('Step2: PDF注文抽出 — 注文数量が記入された5商品を抽出', () => {
+        expect(pdfProducts.length).toBe(5);
+    });
+
+    it('Step2: PDF注文抽出 — ビダクリーム・ノーマルレフィル 12個', () => {
+        const p = pdfProducts.find(p => p.code === '1110');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(12);
+    });
+
+    it('Step2: PDF注文抽出 — ビダクリーム・まこもレフィル 12個', () => {
+        const p = pdfProducts.find(p => p.code === '1111');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(12);
+    });
+
+    it('Step2: PDF注文抽出 — ビダクリーム・ジーワレフィル 12個', () => {
+        const p = pdfProducts.find(p => p.code === '1113');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(12);
+    });
+
+    it('Step2: PDF注文抽出 — ビダウォーターソープ・泡ポンプボトル入 12個', () => {
+        const p = pdfProducts.find(p => p.code === '1226');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(12);
+    });
+
+    it('Step2: PDF注文抽出 — アグア650mlパック 12個', () => {
+        const p = pdfProducts.find(p => p.code === '1369');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(12);
+    });
+
+    it('Step2: PDF注文抽出 — 注文のない商品は抽出されない', () => {
+        // 1114（ビダクリーム専用ケース）は注文数なし
+        const noOrder = pdfProducts.find(p => p.code === '1114');
+        expect(noOrder).toBeUndefined();
     });
 });
