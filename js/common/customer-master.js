@@ -214,8 +214,10 @@ function extractPrefecture(address) {
 function parsePriceType(tankaSyurui) {
     if (!tankaSyurui) return 1;
 
-    if (tankaSyurui.includes('２') || tankaSyurui.includes('2')) return 2;
+    if (tankaSyurui.includes('５') || tankaSyurui.includes('5')) return 5;
+    if (tankaSyurui.includes('４') || tankaSyurui.includes('4')) return 4;
     if (tankaSyurui.includes('３') || tankaSyurui.includes('3')) return 3;
+    if (tankaSyurui.includes('２') || tankaSyurui.includes('2')) return 2;
     return 1;
 }
 
