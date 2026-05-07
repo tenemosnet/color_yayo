@@ -863,10 +863,14 @@ function getSelectedOrders() {
 }
 
 /**
- * 受注を伝票出力順にソート: 受注日降順（新しい→古い）
+ * 受注を伝票出力順にソート: 受注日降順 → 同日内は売上ID降順（新しい→古い）
  */
 function sortOrdersForExport(orders) {
-    return [...orders].sort((a, b) => b.orderDate.localeCompare(a.orderDate));
+    return [...orders].sort((a, b) => {
+        const dateDiff = b.orderDate.localeCompare(a.orderDate);
+        if (dateDiff !== 0) return dateDiff;
+        return parseInt(b.salesId) - parseInt(a.salesId);
+    });
 }
 
 /**
