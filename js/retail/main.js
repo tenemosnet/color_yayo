@@ -863,14 +863,10 @@ function getSelectedOrders() {
 }
 
 /**
- * 受注を伝票出力順にソート: 代引き先 → 振込後（カラーミー受注順）
+ * 受注を伝票出力順にソート: 受注日降順（新しい→古い）
  */
 function sortOrdersForExport(orders) {
-    const isCOD = (o) => o.paymentMethod.includes('代引') || (o.paymentFee > 0);
-    const codOrders = orders.filter(o => isCOD(o));
-    const bankOrders = orders.filter(o => !isCOD(o));
-
-    return [...codOrders, ...bankOrders];
+    return [...orders].sort((a, b) => b.orderDate.localeCompare(a.orderDate));
 }
 
 /**
