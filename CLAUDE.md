@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-カラーミーショップの受注データと卸売注文を弥生販売の売上伝票形式に変換するWebアプリケーション。ブラウザベースのES6 Modulesアプリケーション（v6.9.1）。ビルド不要。
+カラーミーショップの受注データと卸売注文を弥生販売の売上伝票形式に変換するWebアプリケーション。ブラウザベースのES6 Modulesアプリケーション（v6.9.2）。ビルド不要。
 
 ## コマンド
 
@@ -125,14 +125,14 @@ js/
 
 コードなしメール注文の自動マッチングで使用。検索テキストを `normalizeForSearch` で正規化後、3段階でスコアリング:
 
-**正規化** (`normalizeForSearch`): 全角数字→半角、ℓ/L→リットル、全角括弧→半角括弧、空白除去、lowercase
+**正規化** (`normalizeForSearch`): 全角数字→半角、ℓ/L→リットル、括弧（全角・半角）と「・」（なかぐろ）を除去、空白除去、lowercase
 
 **スコアリング**:
 - **200点**: 双方向マッチ（キーワードが商品名に含まれる＋商品名が検索テキストに含まれる）
 - **150点**: 逆引きのみ（商品名全体が検索テキストに含まれる、3文字以上）
 - **50〜100点**: キーワード一致率（例: 2/3キーワード一致 → 67点）
 
-**ソート順**: スコア降順 → バイグラム類似度降順 → 商品名長さ昇順（単品優先）
+**ソート順**: スコア降順 → バイグラム類似度降順 → 卸/テネモスバリアント降格 → セット品降格（検索テキストに「セット」がない場合） → コード番号帯昇順（1XXX優先/2XXX卸/3XXX廃番） → 商品名長さ昇順（単品優先）
 
 **キーワード分割**: 空白・括弧・中黒で分割、2文字未満は除外
 
@@ -179,12 +179,4 @@ js/
 - `test/bank-matcher.test.js` — ゆうちょ入金照合の各パスとエッジケース
 - `test/fixtures/eml/` — 取引先別サンプルEMLファイル（回帰テスト用）
 
-**localStorageモック**: 全テスト共通で以下のパターンを使用
-```javascript
-vi.stubGlobal('localStorage', {
-    _store: {},
-    getItem(key) { return this._store[key] || null; },
-    setItem(key, value) { this._store[key] = value; },
-    removeItem(key) { delete this._store[key]; }
-});
-```
+**localStorageモック**: localStorage を使うモジュールは `vi.stubGlobal('localStorage', {...})` でモック必須（`test/integration-pipeline.test.js` 等を参照）
