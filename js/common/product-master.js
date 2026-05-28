@@ -398,12 +398,14 @@ export function searchProductsByText(searchText) {
         return isNaN(n) ? 9 : Math.floor(n / 1000);
     };
 
-    // スコア降順 → バイグラム類似度降順 → メイン商品優先 → セット品降格 → コード番号帯昇順 → 商品名が短い方を優先
+    // スコア降順 → セット品降格 → バイグラム類似度降順 → メイン商品優先 → コード番号帯昇順 → 商品名が短い方を優先
+    // ※セット品降格はbigramScoreより先に評価する（セット品名が検索テキストと一致して
+    //   bigramScoreが単品より高くなる場合でも単品を優先するため）
     results.sort((a, b) =>
         b.score - a.score ||
+        (!searchHasSet ? (isSetItem(a.code, a.name) ? 1 : 0) - (isSetItem(b.code, b.name) ? 1 : 0) : 0) ||
         b.bigramScore - a.bigramScore ||
         (isVariant(a.name) ? 1 : 0) - (isVariant(b.name) ? 1 : 0) ||
-        (!searchHasSet ? (isSetItem(a.code, a.name) ? 1 : 0) - (isSetItem(b.code, b.name) ? 1 : 0) : 0) ||
         codeRange(a.code) - codeRange(b.code) ||
         a.name.length - b.name.length
     );
