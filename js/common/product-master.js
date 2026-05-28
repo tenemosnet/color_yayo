@@ -4,6 +4,8 @@
  * 小売・卸売両方で使用
  */
 
+import { setProducts } from './config.js';
+
 const STORAGE_KEY = 'productMaster';
 
 // 商品マスタデータ（メモリキャッシュ）
@@ -384,8 +386,11 @@ export function searchProductsByText(searchText) {
     const isVariant = (name) => /[　\s]*(卸|ﾃﾈﾓｽ|テネモス)$/.test(name.trim());
 
     // セット品判定（検索テキストに「セット」が含まれない場合に降格）
+    // config.js の setProducts に登録されたコード、または名前に「セット」を含む商品
     const searchHasSet = /セット|ｾｯﾄ/.test(normalizedSearch);
-    const isSetProduct = (name) => /セット|ｾｯﾄ/.test(name);
+    const isSetItem = (code, name) =>
+        Object.prototype.hasOwnProperty.call(setProducts, code) ||
+        /セット|ｾｯﾄ/.test(name);
 
     // コード番号帯: 1XXX(メイン) < 2XXX(卸) < 3XXX(テネモス/廃番) の順で優先
     const codeRange = (code) => {
@@ -398,7 +403,7 @@ export function searchProductsByText(searchText) {
         b.score - a.score ||
         b.bigramScore - a.bigramScore ||
         (isVariant(a.name) ? 1 : 0) - (isVariant(b.name) ? 1 : 0) ||
-        (!searchHasSet ? (isSetProduct(a.name) ? 1 : 0) - (isSetProduct(b.name) ? 1 : 0) : 0) ||
+        (!searchHasSet ? (isSetItem(a.code, a.name) ? 1 : 0) - (isSetItem(b.code, b.name) ? 1 : 0) : 0) ||
         codeRange(a.code) - codeRange(b.code) ||
         a.name.length - b.name.length
     );
