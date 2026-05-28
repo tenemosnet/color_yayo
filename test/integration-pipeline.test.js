@@ -41,7 +41,9 @@ const MOCK_PRODUCTS = {
     '1110': { code: '1110', name: 'ノーマルレフィル', category1: '', price1: 990, price2: 0, price3: 0, lotSize: 0 },
     '1500': { code: '1500', name: 'マナウォーター(中)ステンレス', category1: '', price1: 33000, price2: 0, price3: 0, lotSize: 0 },
     '1511': { code: '1511', name: 'マナウォーター青 中', category1: '', price1: 8000, price2: 0, price3: 0, lotSize: 0 },
-    '1600': { code: '1600', name: '糖蜜', category1: '07', price1: 770, price2: 0, price3: 0, lotSize: 20 }
+    '1600': { code: '1600', name: '糖蜜', category1: '07', price1: 770, price2: 0, price3: 0, lotSize: 20 },
+    '1113': { code: '1113', name: 'ビダクリーム・ジーワレフィル(30ml)付替用', category1: '', price1: 1740, price2: 2030, price3: 0, lotSize: 0 },
+    '1341': { code: '1341', name: 'プレミアム酵素水「霞」かすみ100mlパック', category1: '', price1: 2160, price2: 2448, price3: 0, lotSize: 0 }
 };
 
 // localStorage モック
@@ -346,5 +348,64 @@ describe('La Natura パイプライン', () => {
         // 1114（ビダクリーム専用ケース）は注文数なし
         const noOrder = pdfProducts.find(p => p.code === '1114');
         expect(noOrder).toBeUndefined();
+    });
+});
+
+// ============================================================
+// サロンドゥラペッシュ: multipart/alternative + quoted-printable + ISO-2022-JP
+// ============================================================
+describe('サロンドゥラペッシュ パイプライン', () => {
+    let parsed, products;
+
+    beforeEach(() => {
+        const eml = readEmlFixture('salon_de_la_peche.eml');
+        parsed = parseEmlFile(eml);
+        products = extractProductData(parsed.body);
+    });
+
+    it('Step1: EML解析 — ISO-2022-JP QPを日本語にデコードしドメインを抽出', () => {
+        expect(parsed.fromDomain).toBe('pd6.so-net.ne.jp');
+        expect(parsed.body).toContain('ビダウォーターソープ');
+        expect(parsed.body).toContain('ビダクリームノーマル');
+        expect(parsed.body).toContain('酵素水');
+    });
+
+    it('Step2: 商品抽出 — 5商品を抽出', () => {
+        expect(products).toHaveLength(5);
+    });
+
+    it('Step2: 数量検証 — 24, 48, 24, 12, 12個', () => {
+        const quantities = products.map(p => p.quantity).sort((a, b) => a - b);
+        expect(quantities).toEqual([12, 12, 24, 24, 48]);
+    });
+
+    it('Step3: スコアリング — ビダウォーターソープ(400ml)が1221にマッチ、24個', () => {
+        const p = products.find(p => p.code === '1221');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(24);
+    });
+
+    it('Step3: スコアリング — ビダクリームノーマル(レフィル)が1110にマッチ、48個', () => {
+        const p = products.find(p => p.code === '1110');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(48);
+    });
+
+    it('Step3: スコアリング — ビダクリームジーワ(レフィル)が1113にマッチ、24個', () => {
+        const p = products.find(p => p.code === '1113');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(24);
+    });
+
+    it('Step3: スコアリング — お米と大豆の酵素水(650ml)が1393にマッチ、12個', () => {
+        const p = products.find(p => p.code === '1393');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(12);
+    });
+
+    it('Step3: スコアリング — プレミアム酵素水(100m)が1341にマッチ、12個', () => {
+        const p = products.find(p => p.code === '1341');
+        expect(p).toBeDefined();
+        expect(p.quantity).toBe(12);
     });
 });

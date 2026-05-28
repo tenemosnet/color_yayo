@@ -1,0 +1,171 @@
+X-Account-Key: account3
+X-UIDL: UID79346-1569043688
+X-Mozilla-Status: 0000
+X-Mozilla-Status2: 00000000
+X-Mozilla-Keys:                                                                                 
+Return-Path: <arigatou1522@pd6.so-net.ne.jp>
+Delivered-To: order@tenemos.jp
+X-Virus-Status: scanned (With Secure/Atlant/virusgw12106.xserver.jp/)
+Received: from hsmtpd-def-c1101.xspmail.jp (hsmtpd-def-c1101.xspmail.jp [220.100.193.61])
+	by sv8542.xserver.jp (Postfix) with ESMTPS id 1A0F03008AC01C
+	for <order@tenemos.jp>; Thu, 28 May 2026 13:55:41 +0900 (JST)
+Authentication-Results: sv8542.xserver.jp;
+	dkim=pass header.d=pd6.so-net.ne.jp header.s=x01 header.b=rTnNvXJ1;
+	spf=pass (sv8542.xserver.jp: domain of arigatou1522@pd6.so-net.ne.jp designates 220.100.193.61 as permitted sender) smtp.mailfrom=arigatou1522@pd6.so-net.ne.jp;
+	dmarc=pass (policy=reject) header.from=pd6.so-net.ne.jp
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1779944140;
+	d=pd6.so-net.ne.jp; s=x01; i=arigatou1522@pd6.so-net.ne.jp;
+	h=mime-version:content-type:message-id:date:subject:to:from:from;
+	bh=F01Yn7nZEaxSwkebyHwC7ZjJ5t/+ki1vCb4ebb7YMVU=;
+	b=rTnNvXJ15iKQlqRibAsrYSZB2iUi+jfXtZR70hJpMVt0nCGNXxg5/NuypVu6izHwcI1E2KSngHt1u
+	 W4uVLk8jjWlB0A+ED/4l/1ArVBJEVtfcksDAmJZlmasKMnNsM74DZMbpT/qXogRjfkhEnOSpKcKPVD
+	 G8lo+G4mTFn6lXxWLsyJDK0ODbth//ArCqsvq3UyCZfwVB2fuz1oz2ilb7nsXe8rCN57MhBXW7V21k
+	 9j6vJgr3cW+owBozD5yC2SwDlQnUbq+OeersEf/qCGg7VveH59eJQz7eWwZSyQY+b34VXMQzDTG4Mg
+	 GbZfgF+FybDtVYQV96q09j9hBhuuAyg==
+X-Country-Code: JP
+Received: from TYSPR03MB8991.apcprd03.prod.outlook.com (unknown [2603:1046:c09:4e8::5])
+	by hsmtpd-out-4.sonet.c1101.xspmail.jp (Halon) with ESMTPSA (TLSv1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+	id ccc64fbf-e51c-4fa8-93c2-8c7f6d19d2f7;
+	Thu, 28 May 2026 13:55:40 +0900 (JST)
+From: "arigatou1522@pd6.so-net.ne.jp" <arigatou1522@pd6.so-net.ne.jp>
+To: =?iso-2022-jp?B?GyRCJUYlTSViJTklTSVDJUgyN0hOR2RJdBsoQg==?=
+	<order@tenemos.jp>
+Subject: =?iso-2022-jp?B?GyRCQ21KOCQqNGokJCQ3JF4kORsoQg==?=
+Thread-Topic: =?iso-2022-jp?B?GyRCQ21KOCQqNGokJCQ3JF4kORsoQg==?=
+Thread-Index: AQHc7lyzQFv/PNgyxEu353Vk42f1ug==
+X-MS-Exchange-MessageSentRepresentingType: 1
+Date: Thu, 28 May 2026 04:55:39 +0000
+Message-ID:
+	<TYSPR03MB8991AB59AF804C640280CEE1F5092@TYSPR03MB8991.apcprd03.prod.outlook.com>
+Accept-Language: ja-JP, en-US
+Content-Language: ja-JP
+X-MS-Has-Attach:
+X-MS-Exchange-Organization-SCL: -1
+X-MS-TNEF-Correlator:
+X-MS-Exchange-Organization-RecordReviewCfmType: 0
+msip_labels:
+Content-Type: multipart/alternative;
+	boundary="_000_TYSPR03MB8991AB59AF804C640280CEE1F5092TYSPR03MB8991apcp_"
+MIME-Version: 1.0
+XSRV-Filter: order@tenemos.jp
+
+--_000_TYSPR03MB8991AB59AF804C640280CEE1F5092TYSPR03MB8991apcp_
+Content-Type: text/plain; charset="iso-2022-jp"
+Content-Transfer-Encoding: quoted-printable
+
+=1B$B$*@$OC$K$J$C$F$*$j$^$9!"IHED$G$9!#=1B(B
+=1B$BCmJ8$*4j$$$7$^$9!#=1B(B
+
+
+=1B$B!&%S%@%&%)!<%?!<%=3D!<%W=1B(B(400ml)=1B$B!"=1B(B24=1B$B8D=1B(B
+
+=1B$B!&%S%@%/%j!<%`%N!<%^%k=1B(B(=1B$B%l%U%#%k=1B(B)=1B$B!"=1B(B48=1B$B8D=
+=1B(B
+
+=1B$B!&%S%@%/%j!<%`%8!<%o=1B(B(=1B$B%l%U%#%k=1B(B)=1B$B!"=1B(B24=1B$B8D=1B(=
+B
+
+=1B$B!&$*JF$HBgF&$N9ZAG?e=1B(B(650ml)=1B$B!"=1B(B12=1B$B8D=1B(B
+
+=1B$B!&%W%l%_%"%`9ZAG?e=1B(B(100m)=1B$B!"=1B(B12=1B$B8D=1B(B
+
+
+=1B$B%Q%s%U%l%C%H$OITMW$G$9!#=1B(B
+=1B$B$h$m$7$/$*4j$$CW$7$^$9!#=1B(B
+
+
+--_000_TYSPR03MB8991AB59AF804C640280CEE1F5092TYSPR03MB8991apcp_
+Content-Type: text/html; charset="iso-2022-jp"
+Content-Transfer-Encoding: quoted-printable
+
+<html>
+<head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-2022-=
+jp">
+<style type=3D"text/css" style=3D"display:none;"> P {margin-top:0;margin-bo=
+ttom:0;} </style>
+</head>
+<body dir=3D"ltr">
+<div style=3D"font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, =
+Calibri, Helvetica, sans-serif; font-size: 11pt; color: rgb(0, 0, 0);">
+=1B$B$*@$OC$K$J$C$F$*$j$^$9!"IHED$G$9!#=1B(B</div>
+<div style=3D"font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, =
+Calibri, Helvetica, sans-serif; font-size: 11pt; color: rgb(0, 0, 0);">
+=1B$BCmJ8$*4j$$$7$^$9!#=1B(B</div>
+<div style=3D"font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, =
+Calibri, Helvetica, sans-serif; font-size: 11pt; color: rgb(0, 0, 0);">
+<br>
+</div>
+<div style=3D"font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, =
+Calibri, Helvetica, sans-serif; font-size: 11pt; color: rgb(0, 0, 0);">
+<br>
+</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+=1B$B!&%S%@%&%)!<%?!<%=3D!<%W=1B(B(400ml)=1B$B!"=1B(B24=1B$B8D=1B(B</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+<br>
+</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+=1B$B!&%S%@%/%j!<%`%N!<%^%k=1B(B(=1B$B%l%U%#%k=1B(B)=1B$B!"=1B(B48=1B$B8D=
+=1B(B</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+<br>
+</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+=1B$B!&%S%@%/%j!<%`%8!<%o=1B(B(=1B$B%l%U%#%k=1B(B)=1B$B!"=1B(B24=1B$B8D=1B(=
+B</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+<br>
+</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+=1B$B!&$*JF$HBgF&$N9ZAG?e=1B(B(650ml)=1B$B!"=1B(B12=1B$B8D=1B(B</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+<br>
+</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+=1B$B!&%W%l%_%"%`9ZAG?e=1B(B(100m)=1B$B!"=1B(B12=1B$B8D=1B(B</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+<br>
+</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+<br>
+</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+=1B$B%Q%s%U%l%C%H$OITMW$G$9!#=1B(B</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+=1B$B$h$m$7$/$*4j$$CW$7$^$9!#=1B(B</div>
+<div class=3D"elementToProof" style=3D"font-family: Aptos, Aptos_EmbeddedFo=
+nt, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 11pt; c=
+olor: rgb(0, 0, 0);">
+<br>
+</div>
+</body>
+</html>
+
+--_000_TYSPR03MB8991AB59AF804C640280CEE1F5092TYSPR03MB8991apcp_--

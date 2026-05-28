@@ -77,6 +77,12 @@ export const VENDORS = {
         detect: { type: 'pdf-text' },
         domain: 'homeo-re',
         japaneseName: 'La Natura株式会社'
+    },
+    SALON_DE_LA_PECHE: {
+        code: '000162',
+        nounyuCode: '002',  // 取引区分4（都度請求）→ 先行出荷
+        detect: { type: 'eml' }
+        // 検出: 顧客マスタのメール欄 arigatou1522@pd6.so-net.ne.jp で照合
     }
 };
 

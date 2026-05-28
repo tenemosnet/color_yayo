@@ -35,7 +35,9 @@ export function parseEmlFile(emlContent) {
     let body = bodyPart;
 
     // multipart メールの場合: text/plain パートを抽出してデコード
-    const boundaryMatch = contentType.match(/boundary="?([^"\r\n;]+)"?/i);
+    // boundary がヘッダー折り返し行にある場合 (RFC 2822 header folding) はヘッダー全体から検索
+    const boundaryMatch = contentType.match(/boundary="?([^"\r\n;]+)"?/i)
+        || headerPart.match(/boundary="?([^"\r\n;]+)"?/i);
     if (boundaryMatch) {
         const boundary = boundaryMatch[1];
         const extracted = extractTextPlainFromMultipart(bodyPart, boundary);
@@ -80,6 +82,10 @@ function extractTextPlainFromMultipart(bodyPart, boundary) {
         const ctMatch = partHeader.match(/Content-Type:\s*text\/plain/i);
         if (!ctMatch) continue;
 
+        // charset を抽出（例: charset="iso-2022-jp"）
+        const charsetMatch = partHeader.match(/charset=["']?([^"';\s\r\n]+)/i);
+        const charset = charsetMatch ? charsetMatch[1].trim() : 'utf-8';
+
         // Content-Transfer-Encoding を確認
         const encMatch = partHeader.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i);
         const enc = encMatch ? encMatch[1].trim().toLowerCase() : '';
@@ -87,7 +93,7 @@ function extractTextPlainFromMultipart(bodyPart, boundary) {
         if (enc === 'base64') {
             return decodeBase64(partBody);
         } else if (enc === 'quoted-printable') {
-            return decodeQuotedPrintable(partBody);
+            return decodeQuotedPrintable(partBody, charset);
         }
         return partBody;
     }
@@ -256,16 +262,39 @@ function decodeBase64(data) {
 /**
  * Quoted-Printableデコード
  * @param {string} data
+ * @param {string} [charset] - 文字コード（例: 'iso-2022-jp'）。省略時はUTF-8として処理
  * @returns {string}
  */
-function decodeQuotedPrintable(data) {
+function decodeQuotedPrintable(data, charset) {
     try {
-        // =XX 形式をデコード
-        const decoded = data.replace(/=([0-9A-Fa-f]{2})/g, (match, hex) => {
-            return String.fromCharCode(parseInt(hex, 16));
-        });
-        // ソフト改行を除去
-        return decoded.replace(/=\r?\n/g, '');
+        // UTF-8/ASCII（デフォルト）: 文字列ベースの既存デコード
+        const normalizedCharset = (charset || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const isUtf8 = !charset || normalizedCharset === 'utf8' || normalizedCharset === 'usascii' || normalizedCharset === 'ascii';
+
+        if (isUtf8) {
+            // =XX 形式をデコード
+            const decoded = data.replace(/=([0-9A-Fa-f]{2})/g, (match, hex) => {
+                return String.fromCharCode(parseInt(hex, 16));
+            });
+            // ソフト改行を除去
+            return decoded.replace(/=\r?\n/g, '');
+        }
+
+        // 他のcharset (例: iso-2022-jp): バイト配列に変換してTextDecoderでデコード
+        const noSoftBreaks = data.replace(/=\r?\n/g, '');
+        const bytes = [];
+        let i = 0;
+        while (i < noSoftBreaks.length) {
+            if (noSoftBreaks[i] === '=' && i + 2 < noSoftBreaks.length &&
+                /[0-9A-Fa-f]{2}/.test(noSoftBreaks.substring(i + 1, i + 3))) {
+                bytes.push(parseInt(noSoftBreaks.substring(i + 1, i + 3), 16));
+                i += 3;
+            } else {
+                bytes.push(noSoftBreaks.charCodeAt(i) & 0xFF);
+                i++;
+            }
+        }
+        return new TextDecoder(charset).decode(new Uint8Array(bytes));
     } catch (e) {
         console.error('Quoted-Printable decode error:', e);
         return data;
