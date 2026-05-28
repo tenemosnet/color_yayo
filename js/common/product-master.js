@@ -303,7 +303,7 @@ function normalizeForSearch(text) {
         .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
         .replace(/[ℓＬｌ]/g, 'リットル')
         .replace(/(\d)\s*[Ll]\b/g, '$1リットル')
-        .replace(/[（()）]/g, '')  // 括弧を除去（全角・半角とも）
+        .replace(/[（()）・]/g, '')  // 括弧・中黒を除去（全角・半角・なかぐろ）
         .replace(/[　\s]+/g, '')
         .toLowerCase();
 }
@@ -383,11 +383,23 @@ export function searchProductsByText(searchText) {
     // 同一商品が1XXX(メイン)/2XXX(卸)/3XXX(ﾃﾈﾓｽ)で登録されている場合にメインを優先
     const isVariant = (name) => /[　\s]*(卸|ﾃﾈﾓｽ|テネモス)$/.test(name.trim());
 
-    // スコア降順 → バイグラム類似度降順 → メイン商品優先 → 商品名が短い方を優先
+    // セット品判定（検索テキストに「セット」が含まれない場合に降格）
+    const searchHasSet = /セット|ｾｯﾄ/.test(normalizedSearch);
+    const isSetProduct = (name) => /セット|ｾｯﾄ/.test(name);
+
+    // コード番号帯: 1XXX(メイン) < 2XXX(卸) < 3XXX(テネモス/廃番) の順で優先
+    const codeRange = (code) => {
+        const n = parseInt(code, 10);
+        return isNaN(n) ? 9 : Math.floor(n / 1000);
+    };
+
+    // スコア降順 → バイグラム類似度降順 → メイン商品優先 → セット品降格 → コード番号帯昇順 → 商品名が短い方を優先
     results.sort((a, b) =>
         b.score - a.score ||
         b.bigramScore - a.bigramScore ||
         (isVariant(a.name) ? 1 : 0) - (isVariant(b.name) ? 1 : 0) ||
+        (!searchHasSet ? (isSetProduct(a.name) ? 1 : 0) - (isSetProduct(b.name) ? 1 : 0) : 0) ||
+        codeRange(a.code) - codeRange(b.code) ||
         a.name.length - b.name.length
     );
 

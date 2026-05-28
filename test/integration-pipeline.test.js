@@ -43,6 +43,8 @@ const MOCK_PRODUCTS = {
     '1511': { code: '1511', name: 'マナウォーター青 中', category1: '', price1: 8000, price2: 0, price3: 0, lotSize: 0 },
     '1600': { code: '1600', name: '糖蜜', category1: '07', price1: 770, price2: 0, price3: 0, lotSize: 20 },
     '1113': { code: '1113', name: 'ビダクリーム・ジーワレフィル(30ml)付替用', category1: '', price1: 1740, price2: 2030, price3: 0, lotSize: 0 },
+    '1229': { code: '1229', name: 'ビダウォーターソープ詰替用(400ml)+泡ポンプセット', category1: '', price1: 2900, price2: 0, price3: 0, lotSize: 0 },
+    '3113': { code: '3113', name: 'ビダクリームジーワ レフィル付替用', category1: '', price1: 1740, price2: 0, price3: 0, lotSize: 0 },
     '1341': { code: '1341', name: 'プレミアム酵素水「霞」かすみ100mlパック', category1: '', price1: 2160, price2: 2448, price3: 0, lotSize: 0 }
 };
 
