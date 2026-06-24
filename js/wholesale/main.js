@@ -851,7 +851,7 @@ function displayProductTable(products) {
             ? `<td style="font-family: monospace; ${rowStyle}">${codeDisplay}</td>`
             : `<td class="code-cell" style="${rowStyle}">
                  <input type="text" id="code_${index}" class="code-input${product.code && getProductName(product.code) ? ' code-valid' : product.code ? ' code-invalid' : ''}"
-                        value="${product.code}" placeholder="コード" maxlength="4" data-index="${index}">
+                        value="${product.code}" placeholder="コード" data-index="${index}">
                  <span id="codeStatus_${index}" class="code-status ${product.code && getProductName(product.code) ? 'valid' : product.code && !getProductName(product.code) ? 'invalid' : ''}">${product.code && getProductName(product.code) ? '✓' : product.code && !getProductName(product.code) ? '✕' : ''}</span>
                </td>`;
 
@@ -895,6 +895,14 @@ function displayProductTable(products) {
                 let codeDebounceTimer;
                 codeInput.addEventListener('change', () => handleCodeChange(index));
                 codeInput.addEventListener('input', () => {
+                    const val = codeInput.value.trim();
+                    // 4桁数字が入力されたら即座にマスタ検索
+                    if (/^\d{4}$/.test(val)) {
+                        clearTimeout(codeDebounceTimer);
+                        handleCodeChange(index);
+                        return;
+                    }
+                    // 日本語テキスト等は300msデバウンスで商品名検索
                     clearTimeout(codeDebounceTimer);
                     codeDebounceTimer = setTimeout(() => handleCodeSearch(index), 300);
                 });
