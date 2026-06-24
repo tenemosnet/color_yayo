@@ -6,7 +6,7 @@
 import { readEmlFile, formatDateForInput } from './parsers/eml-parser.js';
 import { extractProductData, calculateAmount, calculateTotal } from './parsers/text-parser.js';
 import { convertToYayoiFormat, downloadAsShiftJIS, getDateString, determineNounyuCode } from './converter.js';
-import { loadProductMasterFile, loadProductMaster, getProductMasterInfo, getWholesalePrice, getProductName, getProductCategory1, getProductLotSize, clearProductMaster } from '../common/product-master.js';
+import { loadProductMasterFile, loadProductMaster, getProductMasterInfo, getWholesalePrice, getProductName, getProductCategory1, getProductLotSize, clearProductMaster, searchProductsByText } from '../common/product-master.js';
 import {
     loadCustomerMasterFile,
     loadCustomerMaster,
@@ -813,7 +813,7 @@ function displayProductTable(products) {
     table.innerHTML = `
         <thead>
             <tr>
-                <th style="width: 80px;">商品コード</th>
+                <th style="width: 130px;">商品コード</th>
                 <th>商品名</th>
                 <th style="width: 80px; text-align: center;">数量</th>
                 <th style="width: 120px; text-align: right;">単価</th>
@@ -846,9 +846,18 @@ function displayProductTable(products) {
                       style="width: 60px; text-align: center; padding: 5px;"
                       data-index="${index}">`;
 
+        // コードセル: 送料行はテキスト表示、通常行は編集可能input
+        const codeCell = isShipping
+            ? `<td style="font-family: monospace; ${rowStyle}">${codeDisplay}</td>`
+            : `<td class="code-cell" style="${rowStyle}">
+                 <input type="text" id="code_${index}" class="code-input${product.code && getProductName(product.code) ? ' code-valid' : product.code ? ' code-invalid' : ''}"
+                        value="${product.code}" placeholder="コード" maxlength="4" data-index="${index}">
+                 <span id="codeStatus_${index}" class="code-status ${product.code && getProductName(product.code) ? 'valid' : product.code && !getProductName(product.code) ? 'invalid' : ''}">${product.code && getProductName(product.code) ? '✓' : product.code && !getProductName(product.code) ? '✕' : ''}</span>
+               </td>`;
+
         tr.innerHTML = `
-            <td style="font-family: monospace; ${rowStyle}">${codeDisplay}</td>
-            <td style="${rowStyle}">${product.name}</td>
+            ${codeCell}
+            <td id="name_${index}" style="${rowStyle}">${product.name}</td>
             <td style="text-align: center; ${rowStyle}">${quantityCell}</td>
             <td style="${rowStyle}">
                 <input type="number"
@@ -879,6 +888,24 @@ function displayProductTable(products) {
         quantityInput.addEventListener('input', () => handleQuantityChange(index));
         quantityInput.addEventListener('change', () => handleQuantityChange(index));
 
+        // コード入力時のイベント（送料行以外）
+        if (!isShipping) {
+            const codeInput = tr.querySelector(`#code_${index}`);
+            if (codeInput) {
+                let codeDebounceTimer;
+                codeInput.addEventListener('change', () => handleCodeChange(index));
+                codeInput.addEventListener('input', () => {
+                    clearTimeout(codeDebounceTimer);
+                    codeDebounceTimer = setTimeout(() => handleCodeSearch(index), 300);
+                });
+                codeInput.addEventListener('focus', () => {
+                    if (currentProducts[index]?.candidates?.length > 0) {
+                        showCandidatesDropdown(index);
+                    }
+                });
+            }
+        }
+
         // 削除ボタン
         tr.querySelector('.delete-row-btn').addEventListener('click', () => {
             currentProducts.splice(index, 1);
@@ -888,6 +915,31 @@ function displayProductTable(products) {
 
     container.innerHTML = '';
     container.appendChild(table);
+
+    // 商品行追加ボタン
+    const addRowBtn = document.createElement('button');
+    addRowBtn.className = 'wholesale-btn secondary';
+    addRowBtn.style.cssText = 'margin-top: 10px; padding: 8px 16px; font-size: 13px;';
+    addRowBtn.textContent = '＋ 商品行を追加';
+    addRowBtn.addEventListener('click', () => {
+        const shippingIdx = currentProducts.findIndex(p => p.isShipping);
+        const insertAt = shippingIdx >= 0 ? shippingIdx : currentProducts.length;
+        currentProducts.splice(insertAt, 0, {
+            code: '',
+            name: '',
+            quantity: 1,
+            unit: '',
+            unitPrice: 0,
+            amount: 0,
+            isShipping: false,
+            isReducedTax: false
+        });
+        displayProductTable(currentProducts);
+        // 追加した行のコード入力にフォーカス
+        const newInput = document.getElementById(`code_${insertAt}`);
+        if (newInput) newInput.focus();
+    });
+    container.appendChild(addRowBtn);
 
     updateLotWarnings();
     updateTotal();
@@ -932,6 +984,12 @@ function updateLotWarnings() {
         .forEach(p => {
             messages.push(`⚠ ${p.code} ${p.name}: 注文数${p.quantity} < 卸単位${p.lotSize} → ばら売り単価への変更が必要`);
         });
+
+    // 商品コード未入力の警告
+    const emptyCodeProducts = currentProducts.filter(p => !p.isShipping && (!p.code || !p.code.trim()));
+    if (emptyCodeProducts.length > 0) {
+        messages.push(`<span style="color: #d32f2f;">⚠ 商品コードが未入力の行があります（${emptyCodeProducts.length}件）。コードを入力するか、不要な行は削除してください。</span>`);
+    }
 
     // メール本文参照（商品0件または顧客未検出時）
     const productCount = currentProducts.filter(p => !p.isShipping).length;
@@ -988,6 +1046,190 @@ function handleQuantityChange(index) {
 
     updateLotWarnings();
     updateTotal();
+}
+
+/**
+ * 商品コード変更時の処理
+ * @param {number} index
+ */
+function handleCodeChange(index) {
+    const input = document.getElementById(`code_${index}`);
+    const nameCell = document.getElementById(`name_${index}`);
+    const unitPriceInput = document.getElementById(`unitPrice_${index}`);
+    const amountCell = document.getElementById(`amount_${index}`);
+    const statusEl = document.getElementById(`codeStatus_${index}`);
+
+    if (!input || !currentProducts[index]) return;
+
+    const code = input.value.trim();
+    const product = currentProducts[index];
+    product.code = code;
+
+    // ドロップダウンを閉じる
+    closeCodeDropdown(index);
+
+    if (!code) {
+        input.classList.remove('code-valid', 'code-invalid');
+        if (statusEl) { statusEl.textContent = ''; statusEl.className = 'code-status'; }
+        updateLotWarnings();
+        return;
+    }
+
+    // 4桁数字の場合のみマスタ検索
+    if (!/^\d{4}$/.test(code)) {
+        input.classList.remove('code-valid', 'code-invalid');
+        if (statusEl) { statusEl.textContent = ''; statusEl.className = 'code-status'; }
+        return;
+    }
+
+    const masterName = getProductName(code);
+
+    if (masterName) {
+        // マスタにヒット → 名称・単価・金額を自動設定
+        const priceType = detectedCustomer ? detectedCustomer.priceType : 2;
+        const useFallback = isCustomerUnregistered();
+        const category1 = getProductCategory1(code);
+        const isReducedTax = (category1 === REDUCED_TAX_CATEGORY1);
+        const priceExcludingTax = getWholesalePrice(code, priceType, { fallback: useFallback });
+
+        product.name = masterName;
+        product.isReducedTax = isReducedTax;
+        product.lotSize = getProductLotSize(code) || undefined;
+        product.lotError = false;
+
+        if (priceExcludingTax > 0) {
+            const priceIncludingTax = toTaxIncluded(priceExcludingTax, isReducedTax);
+            product.unitPrice = priceIncludingTax;
+            if (unitPriceInput) unitPriceInput.value = priceIncludingTax;
+        }
+
+        product.amount = calculateAmount(product);
+
+        if (nameCell) nameCell.textContent = masterName;
+        if (amountCell) amountCell.textContent = product.amount > 0 ? '¥' + product.amount.toLocaleString() : '-';
+
+        input.classList.add('code-valid');
+        input.classList.remove('code-invalid');
+        if (statusEl) { statusEl.textContent = '✓'; statusEl.className = 'code-status valid'; }
+
+        console.log(`コード変更: ${code} → ${masterName} 税込${product.unitPrice}`);
+    } else {
+        // マスタ未登録
+        input.classList.add('code-invalid');
+        input.classList.remove('code-valid');
+        if (statusEl) { statusEl.textContent = '✕'; statusEl.className = 'code-status invalid'; }
+    }
+
+    updateLotWarnings();
+    updateTotal();
+}
+
+/**
+ * コード入力時の商品名テキスト検索（ドロップダウン表示）
+ * @param {number} index
+ */
+function handleCodeSearch(index) {
+    const input = document.getElementById(`code_${index}`);
+    if (!input) return;
+
+    const searchText = input.value.trim();
+    closeCodeDropdown(index);
+
+    // 数字のみ or 2文字未満は検索しない
+    if (/^\d*$/.test(searchText) || searchText.length < 2) return;
+
+    const results = searchProductsByText(searchText);
+    if (results.length === 0) return;
+
+    showDropdown(index, results.slice(0, 5), input);
+}
+
+/**
+ * 既存候補ドロップダウンを表示（text-parserが候補を検出した行向け）
+ * @param {number} index
+ */
+function showCandidatesDropdown(index) {
+    const product = currentProducts[index];
+    if (!product || !product.candidates || product.candidates.length === 0) return;
+
+    const input = document.getElementById(`code_${index}`);
+    if (!input) return;
+
+    closeCodeDropdown(index);
+    showDropdown(index, product.candidates.slice(0, 5), input);
+}
+
+/**
+ * 検索結果ドロップダウンを表示
+ * @param {number} index
+ * @param {Array} results - [{code, name, ...}]
+ * @param {HTMLElement} input
+ */
+function showDropdown(index, results, input) {
+    const dropdown = document.createElement('div');
+    dropdown.id = `codeDropdown_${index}`;
+    dropdown.className = 'code-search-dropdown';
+    let selectedIdx = -1;
+
+    results.forEach((result, i) => {
+        const item = document.createElement('div');
+        item.className = 'code-search-item';
+        item.dataset.idx = i;
+        item.innerHTML = `<span class="search-code">${result.code}</span> ${result.name}`;
+        item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            input.value = result.code;
+            closeCodeDropdown(index);
+            handleCodeChange(index);
+        });
+        dropdown.appendChild(item);
+    });
+
+    // キーボード操作
+    const onKeydown = (e) => {
+        const dd = document.getElementById(`codeDropdown_${index}`);
+        if (!dd) { input.removeEventListener('keydown', onKeydown); return; }
+        const items = dd.querySelectorAll('.code-search-item');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIdx = Math.min(selectedIdx + 1, items.length - 1);
+            items.forEach((el, i) => el.classList.toggle('selected', i === selectedIdx));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIdx = Math.max(selectedIdx - 1, 0);
+            items.forEach((el, i) => el.classList.toggle('selected', i === selectedIdx));
+        } else if (e.key === 'Enter' && selectedIdx >= 0) {
+            e.preventDefault();
+            input.value = results[selectedIdx].code;
+            closeCodeDropdown(index);
+            input.removeEventListener('keydown', onKeydown);
+            handleCodeChange(index);
+        } else if (e.key === 'Escape') {
+            closeCodeDropdown(index);
+            input.removeEventListener('keydown', onKeydown);
+        }
+    };
+    input.addEventListener('keydown', onKeydown);
+
+    const cell = input.closest('.code-cell');
+    if (cell) {
+        cell.appendChild(dropdown);
+    }
+
+    // blur時にドロップダウンを閉じる（遅延でmousedownより後に実行）
+    input.addEventListener('blur', () => {
+        setTimeout(() => closeCodeDropdown(index), 200);
+    }, { once: true });
+}
+
+/**
+ * コードドロップダウンを閉じる
+ * @param {number} index
+ */
+function closeCodeDropdown(index) {
+    const dd = document.getElementById(`codeDropdown_${index}`);
+    if (dd) dd.remove();
 }
 
 /**
@@ -1048,6 +1290,15 @@ function handleConfirmOrder() {
     if (!detectedCustomer) {
         showStatus('⚠️ 顧客が検出されていません。顧客マスタを確認してください。', 'error');
         return;
+    }
+
+    // 商品コード未入力チェック（送料行は除外）
+    const missingCodes = currentProducts.filter(p => !p.isShipping && (!p.code || !p.code.trim()));
+    if (missingCodes.length > 0) {
+        const names = missingCodes.map(p => `・${p.name || '(商品名なし)'}`).join('\n');
+        if (!confirm(`以下の商品の商品コードが未入力です。このまま追加しますか？\n\n${names}\n\n※ 弥生インポート時にエラーになる可能性があります`)) {
+            return;
+        }
     }
 
     // 単価入力チェック（送料行は除外）

@@ -946,6 +946,91 @@ input[type="file"] {
     border-color: #667eea;
 }
 
+/* 商品コード入力 */
+.code-cell {
+    position: relative;
+}
+
+.code-input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 2px solid #dee2e6;
+    border-radius: 5px;
+    font-size: 14px;
+    font-family: monospace;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+
+.code-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.code-input.code-valid {
+    border-color: #28a745;
+}
+
+.code-input.code-invalid {
+    border-color: #e53935;
+}
+
+.code-status {
+    display: inline-block;
+    width: 16px;
+    margin-left: 4px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.code-status.valid {
+    color: #28a745;
+}
+
+.code-status.invalid {
+    color: #e53935;
+}
+
+/* 商品検索ドロップダウン */
+.code-search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1001;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-height: 200px;
+    overflow-y: auto;
+    min-width: 250px;
+    margin-top: 2px;
+}
+
+.code-search-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.code-search-item:last-child {
+    border-bottom: none;
+}
+
+.code-search-item:hover,
+.code-search-item.selected {
+    background: #f0f4ff;
+}
+
+.search-code {
+    display: inline-block;
+    width: 45px;
+    font-family: monospace;
+    font-weight: 600;
+    color: #667eea;
+}
+
 .total-row {
     background: #667eea !important;
     color: white;
