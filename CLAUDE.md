@@ -180,3 +180,28 @@ js/
 - `test/fixtures/eml/` — 取引先別サンプルEMLファイル（回帰テスト用）
 
 **localStorageモック**: localStorage を使うモジュールは `vi.stubGlobal('localStorage', {...})` でモック必須（`test/integration-pipeline.test.js` 等を参照）
+
+テストファイルと対象モジュールの対応:
+
+| テストファイル | 対象 |
+|--------------|------|
+| `integration-pipeline.test.js` | 卸売フルパイプライン（EML→商品抽出） |
+| `product-search.test.js` | `searchProductsByText` スコアリング |
+| `bank-matcher.test.js` | ゆうちょ入金照合 Pass1〜4 |
+| `text-parser.test.js` | 注文行パターン認識 |
+| `eml-parser.test.js` | EML MIME/Base64 デコード |
+| `pdf-parser.test.js` | PDF注文テーブル抽出 |
+| `registry.test.js` | VENDORS件数（取引先追加時に更新必須） |
+| `formrun-parser.test.js` | FormRunエントリーフォーム抽出 |
+
+### FAXパーサーの実装上の注意（`fax-parser.js`）
+
+`parseOptimalLifePdf` は4段階で商品を抽出:
+1. **方法1**: 4桁コード行単独 → 後続行から数量
+2. **方法2**: コードと数量が同一行または次行
+3. **方法3**: `matchProductsByName` で品名→コード（OCRコード誤読補完。コードがOCRテキスト内に存在する場合のみ追加）
+4. **方法4**: 行番号(1-12)直後に4桁コードなく品名がある行 → `searchProductsByText` でコード推定（商品コード空欄行の補完）
+
+**方法4の重要な実装上の注意**: 数量値が1〜12の場合、FAXテーブルの行番号(1〜12)と数値が衝突する。数量探索ループでは「行番号で break」してはならない。中断条件は4桁商品コード行（`/^[12]\d{3}$/`）のみ。
+
+**方法3と方法4の違い**: 方法3は「OCRでコードが誤読されたが実際には存在する」ケース、方法4は「注文書にコード自体が記入されていない」ケース。
