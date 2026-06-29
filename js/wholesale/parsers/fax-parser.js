@@ -420,12 +420,12 @@ function parseOptimalLifePdf(text) {
             if (existingCodesM4.has(best.code)) continue;
 
             // 品名行の後から数量を探す
+            // 注意: 行番号(1-12)での break は禁止。数量自体が1-12の値（例: 4）と
+            // 区別できないため、4桁商品コード行を唯一の中断条件とする
             let quantity = null;
             for (let j = nextIdx + 1; j < Math.min(nextIdx + 5, lines.length); j++) {
                 const scanLine = lines[j].trim();
-                // 次の行番号行（1〜12）に達したら中断
-                if (/^\d{1,2}$/.test(scanLine) && parseInt(scanLine, 10) >= 1 && parseInt(scanLine, 10) <= 12) break;
-                // 次の商品コード行に達したら中断
+                // 次の商品コード行（4桁、1000-2999）に達したら中断
                 if (/^[12]\d{3}$/.test(scanLine)) break;
                 // 備考行（※）はスキップして数量探索を続行
                 if (scanLine.startsWith('※')) continue;
