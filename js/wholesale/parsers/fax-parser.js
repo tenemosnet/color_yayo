@@ -4,7 +4,7 @@
  * 画像ベースのPDF（FAXスキャン）はOCR（Tesseract.js）で文字認識
  */
 
-import { loadProductMaster } from '../../common/product-master.js';
+import { loadProductMaster, searchProductsByText } from '../../common/product-master.js';
 import { hasVisionApiKey, ocrWithVisionApi } from '../common/vision-api.js';
 import { getFaxCustomerCodes } from '../registry.js';
 
@@ -375,13 +375,98 @@ function parseOptimalLifePdf(text) {
         }
     }
 
+    // 方法4: コード空欄行の品名検索補完
+    // テーブル行番号(1-12)の直後に4桁コードなく品名がある行を検出し
+    // searchProductsByText でコードを推定して追加する
+    {
+        const existingCodesM4 = new Set(result.products.map(p => p.code));
+        const existingNamesM4 = new Set(result.products.map(p => p.originalName || ''));
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
+            // 行番号行を検出: 1〜12の整数のみ
+            if (!/^\d{1,2}$/.test(line)) continue;
+            const rowNum = parseInt(line, 10);
+            if (rowNum < 1 || rowNum > 12) continue;
+
+            // 次行確認
+            const nextIdx = i + 1;
+            if (nextIdx >= lines.length) continue;
+            const nextLine = lines[nextIdx].trim();
+
+            // 次行が4桁コード（1000-2999）→ 方法1/2でカバー済み → スキップ
+            if (/^[12]\d{3}$/.test(nextLine)) continue;
+
+            // 偽陽性フィルタ
+            if (!nextLine) continue;                          // 空行
+            if (/^\d+$/.test(nextLine)) continue;             // 純数字（数量行・次の行番号）
+            if (nextLine.startsWith('※')) continue;           // 備考行
+            if (excludeCodes.has(nextLine.trim())) continue;  // 年号除外
+            // 日本語文字（ひらがな/カタカナ/漢字/全角）を含まない行は除外（ヘッダー・英数行等）
+            if (!/[\u3040-\u30FF\u4E00-\u9FFF\uFF00-\uFFEF]/.test(nextLine)) continue;
+
+            const candidateName = nextLine;
+            if (existingNamesM4.has(candidateName)) continue;
+
+            // searchProductsByText で品名→コード変換
+            const matches = searchProductsByText(candidateName);
+            if (!matches || matches.length === 0) continue;
+
+            const best = matches[0];
+            // スコア閾値100: キーワード全一致(100点) or 逆引きマッチ(150/200点)のみ自動採用
+            // 50-99点（キーワード半数一致）は偽陽性リスクがあるため除外
+            if (best.score < 100) continue;
+            if (existingCodesM4.has(best.code)) continue;
+
+            // 品名行の後から数量を探す
+            let quantity = null;
+            for (let j = nextIdx + 1; j < Math.min(nextIdx + 5, lines.length); j++) {
+                const scanLine = lines[j].trim();
+                // 次の行番号行（1〜12）に達したら中断
+                if (/^\d{1,2}$/.test(scanLine) && parseInt(scanLine, 10) >= 1 && parseInt(scanLine, 10) <= 12) break;
+                // 次の商品コード行に達したら中断
+                if (/^[12]\d{3}$/.test(scanLine)) break;
+                // 備考行（※）はスキップして数量探索を続行
+                if (scanLine.startsWith('※')) continue;
+                // 数量候補: 行頭が1〜3桁の数字
+                const qtyMatch = scanLine.match(/^(\d{1,3})(?:\D|$)/);
+                if (qtyMatch) {
+                    const num = parseInt(qtyMatch[1], 10);
+                    if (num >= 1 && num <= 999) { quantity = num; break; }
+                }
+            }
+
+            // 数量不明の場合は追加しない（数量1での誤登録リスク回避）
+            if (quantity === null) {
+                console.log(`オプティマル方法4スキップ（数量不明）: "${candidateName}" → コード=${best.code}`);
+                continue;
+            }
+
+            result.products.push({
+                code: best.code,
+                quantity,
+                unit: '',
+                nameMatched: true,
+                originalName: candidateName
+            });
+            existingCodesM4.add(best.code);
+            existingNamesM4.add(candidateName);
+            console.log(`オプティマル商品検出（方法4・コード空欄補完）: "${candidateName}" → コード=${best.code}(score=${best.score}), 数量=${quantity}`);
+        }
+    }
+
     // 全方法で集めた商品をOCRテキスト内の出現順にソート（注文書の記載順を再現）
     if (result.products.length > 1) {
         const noSpaceText = text.replace(/\s+/g, '');
         result.products.sort((a, b) => {
-            const posA = noSpaceText.indexOf(a.code);
-            const posB = noSpaceText.indexOf(b.code);
-            return posA - posB;
+            // nameMatched商品はコードがOCRテキストにないため、品名のテキスト位置を使う
+            const textA = a.nameMatched ? (a.originalName || '').replace(/\s+/g, '') : a.code;
+            const textB = b.nameMatched ? (b.originalName || '').replace(/\s+/g, '') : b.code;
+            const posA = noSpaceText.indexOf(textA);
+            const posB = noSpaceText.indexOf(textB);
+            // indexOf が -1（見つからない）の場合は末尾扱い
+            return (posA === -1 ? Number.MAX_SAFE_INTEGER : posA) - (posB === -1 ? Number.MAX_SAFE_INTEGER : posB);
         });
     }
 
