@@ -32,8 +32,7 @@ export const setProducts = {
     ],
     '1227': [
         { code: '1226', name: 'ビダウォーターソープ200ml', price: 1980 },
-        { code: '1221', name: 'ビダウォーターソープ詰替用(400ml)', price: 2420 },
-        { code: '1228', name: 'ビダソープセット割引', price: -100 }
+        { code: '1221', name: 'ビダウォーターソープ詰替用(400ml)', price: 2420 }
     ]
 };
 
